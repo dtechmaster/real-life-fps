@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Life FPS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <video id="webcam" autoplay playsinline></video>
+
+  <!-- Canvas stack — all absolutely positioned, same size -->
+  <canvas id="webcam-canvas"></canvas>
+  <canvas id="game-canvas"></canvas>
+  <canvas id="hud-canvas"></canvas>
+
+  <!-- Config cog button -->
+  <button id="cog-btn" title="Settings">⚙</button>
+
+  <!-- Config panel (hidden by default) -->
+  <div id="config-panel" class="hidden"></div>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>
