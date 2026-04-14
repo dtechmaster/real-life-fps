@@ -29,6 +29,14 @@ export function initShooter() {
   });
 
 
+  const barrelBtn = document.getElementById('barrel-tip');
+  if (barrelBtn) {
+    barrelBtn.addEventListener('mousedown',  function() { mouseDown = true;  });
+    barrelBtn.addEventListener('mouseup',    function() { mouseDown = false; });
+    barrelBtn.addEventListener('touchstart', function() { mouseDown = true;  }, { passive: true });
+    barrelBtn.addEventListener('touchend',   function() { mouseDown = false; }, { passive: true });
+  }
+
   document.addEventListener('keydown', function(e) {
     if (e.shiftKey && e.key === 'S') shiftSDown = true;
     if (e.shiftKey && e.key === 'R') reload();

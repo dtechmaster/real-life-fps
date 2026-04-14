@@ -4,6 +4,7 @@ import { initCrosshair, updateCrosshair }                     from './modules/cr
 import { initShooter, tickShooter, isFiring, resetShooter }   from './modules/shooter.js';
 import { initAnimations, tickAnimations, resetAnimations }    from './modules/animations.js';
 import { initConfigPanel, populateCameras }                   from './modules/config-panel.js';
+import { syncBarrelTip }                                      from './modules/animations.js';
 
 // #region Canvas setup
 const video        = document.getElementById('webcam');
@@ -53,6 +54,8 @@ function showGame() {
   loadingScreen.classList.add('hidden');
   cogBtn.classList.remove('hidden');
   restartBtn.classList.remove('hidden');
+  document.getElementById('barrel-tip').classList.remove('hidden');
+  syncBarrelTip();
 }
 // #endregion
 

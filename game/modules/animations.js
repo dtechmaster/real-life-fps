@@ -97,7 +97,6 @@ export function tickAnimations(mask, maskWidth, maskHeight, ctx, displayWidth, d
   applyShake();
   drawDeathMask(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeight);
   tickParticles(ctx);
-  drawBarrelTip(ctx, displayWidth, displayHeight);
   drawFlash(ctx, displayWidth, displayHeight);
   drawLifeBar(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeight);
   drawAmmoBar(ctx, displayWidth, displayHeight);
@@ -365,51 +364,18 @@ function tickParticles(ctx) {
   }
 }
 
-function drawBarrelTip(ctx, w, h) {
-  const bx = getConfig('anim_tracer_barrel_x', 0.5);
-  const by = getConfig('anim_tracer_barrel_y', 0.85);
-  const x  = w * bx;
-  const y  = h * by;
-  const R  = 10;
-  const r  = 3;
-  const ARM = 18;
-
-  ctx.save();
-  ctx.globalAlpha  = 0.85;
-  ctx.strokeStyle  = '#FFEE88';
-  ctx.fillStyle    = '#FFEE88';
-  ctx.lineWidth    = 1.5;
-  ctx.shadowColor  = '#FFCC00';
-  ctx.shadowBlur   = 6;
-
-  // Outer circle
-  ctx.beginPath();
-  ctx.arc(x, y, R, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Center dot
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Four tick marks outside the circle
-  ctx.beginPath();
-  ctx.moveTo(x,         y - R - 4);
-  ctx.lineTo(x,         y - R - 4 - ARM * 0.4);
-  ctx.moveTo(x,         y + R + 4);
-  ctx.lineTo(x,         y + R + 4 + ARM * 0.4);
-  ctx.moveTo(x - R - 4, y);
-  ctx.lineTo(x - R - 4 - ARM * 0.4, y);
-  ctx.moveTo(x + R + 4, y);
-  ctx.lineTo(x + R + 4 + ARM * 0.4, y);
-  ctx.stroke();
-
-  ctx.restore();
-}
-
 function clearParticles() {
   _particles = [];
   _holes     = [];
+}
+
+export function syncBarrelTip() {
+  const el = document.getElementById('barrel-tip');
+  if (!el) return;
+  const bx = getConfig('anim_tracer_barrel_x', 0.5);
+  const by = getConfig('anim_tracer_barrel_y', 0.85);
+  el.style.left = `${bx * 100}%`;
+  el.style.top  = `${by * 100}%`;
 }
 // #endregion
 

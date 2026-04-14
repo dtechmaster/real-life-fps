@@ -49,6 +49,37 @@ video { display: none; }
 
 #cog-btn:hover,
 #restart-btn:hover { background: #8C8A6A; color: #111111; }
+
+#barrel-tip {
+  position: fixed;
+  z-index: 150;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid #FFEE88;
+  background:
+    linear-gradient(#FFEE88, #FFEE88) center / 1.5px 45% no-repeat,
+    linear-gradient(#FFEE88, #FFEE88) center / 45% 1.5px no-repeat,
+    transparent;
+  box-shadow: 0 0 10px #FFCC00, inset 0 0 6px rgba(255, 204, 0, 0.15);
+  transform: translate(-50%, -50%);
+  cursor: crosshair;
+  touch-action: manipulation;
+  padding: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#barrel-tip::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #FFEE88;
+  box-shadow: 0 0 6px #FFCC00;
+  transform: translate(-50%, -50%);
+}
 /* #endregion */
 
 /* #region Config panel */
