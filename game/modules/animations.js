@@ -6,6 +6,8 @@ const PERSON_CATEGORY = 1; // segmenter normalizes all models to binary mask
 let health      = 100;
 let flashAlpha  = 0;
 let _gameCanvas = null;
+let score       = 0;
+let _wasDead    = false;
 // #endregion
 
 // #region Audio
@@ -76,6 +78,7 @@ export function tickAnimations(mask, maskWidth, maskHeight, ctx, displayWidth, d
   drawFlash(ctx, displayWidth, displayHeight);
   drawLifeBar(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeight);
   drawAmmoBar(ctx, displayWidth, displayHeight);
+  drawScore(ctx);
 }
 // #endregion
 
@@ -87,6 +90,15 @@ function updateHealth() {
   } else {
     const regen = getConfig('anim_regen_per_frame', 0.3);
     health = Math.min(100, health + regen);
+  }
+
+  // Score: count each time health crosses from alive → dead
+  if (health <= 0 && !_wasDead) {
+    score++;
+    _wasDead = true;
+  }
+  if (health > 0) {
+    _wasDead = false;
   }
 }
 // #endregion
@@ -207,6 +219,21 @@ function healthColor(hp) {
   if (hp > 60) return '#00FF41';
   if (hp > 30) return '#D08A2E';
   return '#CC0000';
+}
+// #endregion
+
+// #region Score
+function drawScore(ctx) {
+  ctx.save();
+  ctx.font        = 'bold 28px "Courier New", monospace';
+  ctx.textAlign   = 'left';
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur  = 8;
+  ctx.fillStyle   = '#D08A2E';
+  ctx.fillText('SCORE', 24, 46);
+  ctx.fillStyle   = '#E7DFAF';
+  ctx.fillText(score, 110, 46);
+  ctx.restore();
 }
 // #endregion
 
