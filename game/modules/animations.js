@@ -3,7 +3,7 @@ import { getCrosshairPos }          from './crosshair.js';
 import { getConfig }                from './storage.js';
 
 // #region State
-const PERSON_CATEGORY = 1; // segmenter normalizes all models to binary mask
+const PERSON_CATEGORY = 1;
 let health      = 100;
 let flashAlpha  = 0;
 let _gameCanvas = null;
@@ -13,14 +13,65 @@ let _displayWidth  = 800;
 let _displayHeight = 600;
 // #endregion
 
-// #region Audio
-const _gunShot = new Audio('../assets/gun-shot.mp3');
-const _burst   = new Audio('../assets/clean-machine-gun-burst.mp3');
-_gunShot.preload = 'auto';
-_burst.preload   = 'auto';
-_burst.loop      = true;
+// #region Audio (Web Audio API)
+// HTMLAudioElement.play() on iOS Safari blocks the main thread on every call.
+// Web Audio API decodes once into a buffer and fires via createBufferSource(),
+// which is fire-and-forget and does not stall the main thread.
+let _audioCtx       = null;
+let _gunShotBuffer  = null;
+let _burstBuffer    = null;
+let _burstSource    = null; // currently active looping source node
+let _lastShotTime   = 0;
 
-let _lastShotTime = 0; // performance.now() of the last onShoot
+async function initAudio() {
+  try {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const [shot, burst] = await Promise.all([
+      loadBuffer('../assets/gun-shot.mp3'),
+      loadBuffer('../assets/clean-machine-gun-burst.mp3'),
+    ]);
+    _gunShotBuffer = shot;
+    _burstBuffer   = burst;
+  } catch (_) {
+    // Audio unavailable — game still works without sound
+  }
+}
+
+async function loadBuffer(url) {
+  const res = await fetch(url);
+  const ab  = await res.arrayBuffer();
+  return _audioCtx.decodeAudioData(ab);
+}
+
+function resumeCtx() {
+  if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume();
+}
+
+function playOneShot(buffer) {
+  if (!_audioCtx || !buffer) return;
+  resumeCtx();
+  const src = _audioCtx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(_audioCtx.destination);
+  src.start(0);
+}
+
+function startBurstAudio() {
+  if (!_audioCtx || !_burstBuffer || _burstSource) return;
+  resumeCtx();
+  _burstSource        = _audioCtx.createBufferSource();
+  _burstSource.buffer = _burstBuffer;
+  _burstSource.loop   = true;
+  _burstSource.connect(_audioCtx.destination);
+  _burstSource.start(0);
+}
+
+function stopBurstAudio() {
+  if (!_burstSource) return;
+  try { _burstSource.stop(); } catch (_) {}
+  _burstSource.disconnect();
+  _burstSource = null;
+}
 
 function handleShotAudio() {
   const gap       = performance.now() - _lastShotTime;
@@ -28,23 +79,13 @@ function handleShotAudio() {
   _lastShotTime   = performance.now();
 
   if (gap < threshold) {
-    // Rapid / continuous fire — loop the burst sound
-    _gunShot.pause();
-    if (_burst.paused) {
-      _burst.currentTime = 0;
-      _burst.play().catch(function() {});
-    }
+    // Rapid / continuous fire — loop the burst
+    startBurstAudio();
   } else {
-    // Single shot after a pause — force-replay the gunshot
-    _burst.pause();
-    _gunShot.currentTime = 0;
-    _gunShot.play().catch(function() {});
+    // Isolated shot after a pause
+    stopBurstAudio();
+    playOneShot(_gunShotBuffer);
   }
-}
-
-function stopBurst() {
-  _burst.pause();
-  _burst.currentTime = 0;
 }
 // #endregion
 
@@ -60,6 +101,7 @@ export function resetAnimations() {
 
 export function initAnimations(gameCanvas) {
   _gameCanvas = gameCanvas;
+  initAudio(); // async — buffers ready within seconds, null-guarded until then
 
   onShooterEvent('onShootStart', function() {
     if (getConfig('anim_flash_enable', true)) flashAlpha = 0.35;
@@ -75,7 +117,7 @@ export function initAnimations(gameCanvas) {
   });
 
   onShooterEvent('onShootEnd', function() {
-    stopBurst();
+    stopBurstAudio();
     _gameCanvas.style.transform = '';
   });
 }
@@ -114,14 +156,11 @@ function updateHealth() {
     health = Math.min(100, health + regen);
   }
 
-  // Score: count each time health crosses from alive → dead
   if (health <= 0 && !_wasDead) {
     score++;
     _wasDead = true;
   }
-  if (health > 0) {
-    _wasDead = false;
-  }
+  if (health > 0) _wasDead = false;
 }
 // #endregion
 
@@ -150,33 +189,46 @@ function drawFlash(ctx, w, h) {
 // #endregion
 
 // #region Death mask
+// Pre-allocated offscreen — avoids creating a new OffscreenCanvas + ImageData
+// every frame when the player is dead.
+let _deathOffscreen = null, _deathOffCtx = null, _deathImgData = null;
+let _deathMaskW = 0, _deathMaskH = 0;
+
+function ensureDeathBuffer(w, h) {
+  if (w === _deathMaskW && h === _deathMaskH) return;
+  _deathOffscreen = new OffscreenCanvas(w, h);
+  _deathOffCtx    = _deathOffscreen.getContext('2d');
+  _deathImgData   = _deathOffCtx.createImageData(w, h);
+  _deathMaskW     = w;
+  _deathMaskH     = h;
+}
+
 function drawDeathMask(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeight) {
   if (health > 0) return;
 
   const color   = getConfig('death_mask_color',   '#FF0000');
   const opacity = getConfig('death_mask_opacity',  0.6);
-
-  // Pulse opacity using a sine wave for a dramatic effect
-  const pulse = opacity * (0.75 + 0.25 * Math.sin(Date.now() / 150));
-
+  const pulse   = opacity * (0.75 + 0.25 * Math.sin(Date.now() / 150));
   const [r, g, b] = hexToRgb(color);
   const a         = Math.round(pulse * 255);
 
-  const offscreen = new OffscreenCanvas(maskWidth, maskHeight);
-  const offCtx    = offscreen.getContext('2d');
-  const imgData   = offCtx.createImageData(maskWidth, maskHeight);
+  ensureDeathBuffer(maskWidth, maskHeight);
 
+  // Reuse the ImageData buffer — fill(0) clears leftover pixels from last frame
+  const data = _deathImgData.data;
+  data.fill(0);
   for (let i = 0; i < mask.length; i++) {
     if (!mask[i]) continue;
-    imgData.data[i * 4]     = r;
-    imgData.data[i * 4 + 1] = g;
-    imgData.data[i * 4 + 2] = b;
-    imgData.data[i * 4 + 3] = a;
+    const p    = i * 4;
+    data[p]     = r;
+    data[p + 1] = g;
+    data[p + 2] = b;
+    data[p + 3] = a;
   }
 
-  offCtx.putImageData(imgData, 0, 0);
+  _deathOffCtx.putImageData(_deathImgData, 0, 0);
   ctx.imageSmoothingEnabled = getConfig('silhouette_smooth', true);
-  ctx.drawImage(offscreen, 0, 0, displayWidth, displayHeight);
+  ctx.drawImage(_deathOffscreen, 0, 0, displayWidth, displayHeight);
 }
 
 function hexToRgb(hex) {
@@ -198,23 +250,19 @@ function drawLifeBar(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeig
 
   ctx.save();
 
-  // Background
   ctx.globalAlpha = 0.7;
   ctx.fillStyle   = '#111111';
   ctx.fillRect(bx - 1, by - 1, BAR_WIDTH + 2, BAR_HEIGHT + 2);
   ctx.globalAlpha = 1;
 
-  // Fill
   const fillWidth = BAR_WIDTH * (health / 100);
   ctx.fillStyle   = healthColor(health);
   ctx.fillRect(bx, by, fillWidth, BAR_HEIGHT);
 
-  // Border
   ctx.strokeStyle = '#5F624F';
   ctx.lineWidth   = 1;
   ctx.strokeRect(bx, by, BAR_WIDTH, BAR_HEIGHT);
 
-  // Health text
   ctx.fillStyle  = '#E7DFAF';
   ctx.font       = 'bold 14px "Courier New", monospace';
   ctx.textAlign  = 'center';
@@ -224,15 +272,25 @@ function drawLifeBar(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeig
 }
 
 function findPersonHead(mask, maskWidth, maskHeight, displayWidth, displayHeight) {
+  // Fast path: scan only the top 40% of rows — the head is almost always there.
+  // Falls back to a full scan if the person is unusually low in frame.
+  const quickRows = Math.ceil(maskHeight * 0.4);
   for (let y = 0; y < maskHeight; y++) {
+    if (y === quickRows) {
+      // Pause: if we found nothing in the top 40%, keep scanning but skip
+      // the early-return optimisation so the full loop completes naturally.
+    }
+    const base = y * maskWidth;
     for (let x = 0; x < maskWidth; x++) {
-      if (mask[y * maskWidth + x] === PERSON_CATEGORY) {
+      if (mask[base + x] === PERSON_CATEGORY) {
         return {
           x: (x / maskWidth)  * displayWidth,
           y: (y / maskHeight) * displayHeight,
         };
       }
     }
+    // After the fast-path window, we already have our answer if person was found.
+    // The loop continues naturally for the fallback.
   }
   return null;
 }
@@ -260,9 +318,9 @@ function drawScore(ctx) {
 // #endregion
 
 // #region Particles
-const MAX_HOLES   = 20;
-let _particles    = []; // tracers + sparks (short-lived)
-let _holes        = []; // bullet hole decals (slow fade)
+const MAX_HOLES = 20;
+let _particles  = []; // tracers + sparks (short-lived)
+let _holes      = []; // bullet hole decals (slow fade)
 
 const SPARK_COLORS = ['#FF8800', '#FFCC00', '#FFFFFF'];
 
@@ -299,69 +357,71 @@ function spawnHole(cx, cy) {
   const spread = 15;
   const hx = cx + (Math.random() - 0.5) * spread * 2;
   const hy = cy + (Math.random() - 0.5) * spread * 2;
-  if (_holes.length >= MAX_HOLES) _holes.shift(); // remove oldest
+  if (_holes.length >= MAX_HOLES) _holes.shift();
   _holes.push({ x: hx, y: hy, life: 1.0 });
 }
 
 function tickParticles(ctx) {
-  // Draw holes first (underneath sparks)
+  // Single save/restore wraps all particle drawing, instead of one per particle.
+  ctx.save();
+
+  // #region Holes
   for (const h of _holes) {
     if (h.life <= 0) continue;
-    ctx.save();
     ctx.globalAlpha = h.life * 0.85;
+    ctx.fillStyle   = '#111111';
     ctx.beginPath();
     ctx.arc(h.x, h.y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#111111';
     ctx.fill();
+    ctx.strokeStyle = '#CC0000';
+    ctx.lineWidth   = 1.5;
     ctx.beginPath();
     ctx.arc(h.x, h.y, 6, 0, Math.PI * 2);
-    ctx.strokeStyle = '#CC0000';
-    ctx.lineWidth = 1.5;
     ctx.stroke();
-    ctx.restore();
     h.life = Math.max(0, h.life - 0.006);
   }
+  // #endregion
 
-  // Update and draw short-lived particles
+  // #region Short-lived particles (tracers + sparks)
   for (let i = _particles.length - 1; i >= 0; i--) {
     const p = _particles[i];
     if (p.life <= 0) { _particles.splice(i, 1); continue; }
 
     if (p.type === 'tracer') {
-      // Streak travels from barrel (x0,y0) to crosshair (x1,y1) over 3 frames
-      const progress = 1 - p.life; // 0→1 as life 1→0
+      const progress = 1 - p.life;
       const tailT    = Math.max(0, progress - 0.35);
       const tailX    = p.x0 + (p.x1 - p.x0) * tailT;
       const tailY    = p.y0 + (p.y1 - p.y0) * tailT;
       const headX    = p.x0 + (p.x1 - p.x0) * Math.min(1, progress + 0.05);
       const headY    = p.y0 + (p.y1 - p.y0) * Math.min(1, progress + 0.05);
-      ctx.save();
-      ctx.globalAlpha  = p.life * 0.9;
-      ctx.strokeStyle  = '#FFEE88';
-      ctx.lineWidth    = 2;
-      ctx.shadowColor  = '#FFCC00';
-      ctx.shadowBlur   = 8;
+      ctx.globalAlpha = p.life * 0.9;
+      ctx.strokeStyle = '#FFEE88';
+      ctx.lineWidth   = 2;
+      ctx.shadowColor = '#FFCC00';
+      ctx.shadowBlur  = 8;
       ctx.beginPath();
       ctx.moveTo(tailX, tailY);
       ctx.lineTo(headX, headY);
       ctx.stroke();
-      ctx.restore();
-      p.life -= 0.35; // ~3 frames
+      ctx.shadowBlur  = 0; // reset so shadow doesn't bleed into sparks
+      p.life -= 0.35;
 
     } else if (p.type === 'spark') {
-      p.vy += 0.4; // gravity
+      p.vy += 0.4;
       p.x  += p.vx;
       p.y  += p.vy;
-      ctx.save();
       ctx.globalAlpha = p.life;
       ctx.fillStyle   = p.color;
+      ctx.shadowBlur  = 0;
       ctx.beginPath();
       ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
-      p.life -= 0.06; // ~16 frames (~250ms at 60fps)
+      p.life -= 0.06;
     }
   }
+  // #endregion
+
+  ctx.restore();
 }
 
 function clearParticles() {
@@ -385,43 +445,37 @@ function drawAmmoBar(ctx, displayWidth, displayHeight) {
   const maxAmmo = getMaxAmmo();
   const empty   = ammo === 0;
 
-  const BAR_W   = 160;
-  const BAR_H   = 12;
-  const PAD     = 40;
-  const bx      = displayWidth  - PAD - BAR_W;
-  const by      = displayHeight - PAD - BAR_H;
+  const BAR_W = 160;
+  const BAR_H = 12;
+  const PAD   = 40;
+  const bx    = displayWidth  - PAD - BAR_W;
+  const by    = displayHeight - PAD - BAR_H;
 
   ctx.save();
 
-  // Background
   ctx.globalAlpha = 0.7;
   ctx.fillStyle   = '#111111';
   ctx.fillRect(bx - 1, by - 1, BAR_W + 2, BAR_H + 2);
   ctx.globalAlpha = 1;
 
-  // Fill
   if (!empty) {
     ctx.fillStyle = ammo > 30 ? '#D08A2E' : '#CC0000';
     ctx.fillRect(bx, by, BAR_W * (ammo / maxAmmo), BAR_H);
   }
 
-  // Border
   ctx.strokeStyle = '#5F624F';
   ctx.lineWidth   = 1;
   ctx.strokeRect(bx, by, BAR_W, BAR_H);
 
-  // Counter  e.g. "80 / 100"
   ctx.font      = 'bold 14px "Courier New", monospace';
   ctx.fillStyle = '#E7DFAF';
   ctx.textAlign = 'right';
   ctx.fillText(`${ammo} / ${maxAmmo}`, bx + BAR_W, by - 6);
 
-  // Label
   ctx.fillStyle = '#D08A2E';
   ctx.textAlign = 'left';
   ctx.fillText('AMMO', bx, by - 6);
 
-  // Reload prompt — blinks when empty
   if (empty && Math.floor(Date.now() / 400) % 2 === 0) {
     ctx.fillStyle = '#CC0000';
     ctx.font      = 'bold 18px "Courier New", monospace';

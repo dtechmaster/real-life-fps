@@ -25,7 +25,7 @@ video { display: none; }
 }
 
 #webcam-canvas { z-index: 0; }
-#game-canvas   { z-index: 1; }
+#game-canvas   { z-index: 1; will-change: transform; }
 #hud-canvas    { z-index: 2; }
 /* #endregion */
 
