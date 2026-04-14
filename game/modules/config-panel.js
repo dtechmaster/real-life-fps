@@ -36,7 +36,7 @@ function renderCameraSection(panel) {
 
   const row = makeRow('Device');
   _cameraSelect = document.createElement('select');
-  _cameraSelect.style.cssText = 'background:#1A1A1A;color:#77776B;border:1px solid #5F624F;font-family:inherit;font-size:14px;padding:4px;flex:1;';
+  _cameraSelect.style.cssText = 'background:#000810;color:#245040;border:1px solid rgba(0,255,204,0.3);font-family:inherit;font-size:13px;padding:4px;flex:1;';
   _cameraSelect.disabled = true;
   const placeholder = document.createElement('option');
   placeholder.textContent = 'Waiting for permission…';
@@ -55,7 +55,7 @@ export function populateCameras(devices, currentDeviceId, onChange) {
   if (!_cameraSelect) return;
   _cameraSelect.innerHTML = '';
   _cameraSelect.disabled  = false;
-  _cameraSelect.style.color = '#E7DFAF';
+  _cameraSelect.style.color = '#D0FFEE';
   devices.forEach(function(device, i) {
     const opt = document.createElement('option');
     opt.value       = device.deviceId;
@@ -74,7 +74,7 @@ function renderSilhouetteSection(panel) {
   title.textContent = 'Silhouette';
   panel.appendChild(title);
 
-  addColorRow(panel, 'Color',     'silhouette_color',     '#00FF41');
+  addColorRow(panel, 'Color',     'silhouette_color',     '#00FFCC');
   addRangeRow(panel, 'Thickness', 'silhouette_thickness', 0,   0,   20,  1);
   addRangeRow(panel, 'Opacity',   'silhouette_opacity',   0,   0,   1.0, 0.05);
   addCheckRow(panel, 'Smooth',    'silhouette_smooth',    true);
@@ -91,8 +91,8 @@ function renderCrosshairSection(panel) {
   addRangeRow(panel, 'Size',       'crosshair_size',       12, 2, 40, 1);
   addRangeRow(panel, 'Gap',        'crosshair_gap',        4,  0, 20, 1);
   addRangeRow(panel, 'Thickness',  'crosshair_thickness',  2,  1, 8,  1);
-  addColorRow(panel, 'Idle Color', 'crosshair_color_idle', '#00FF41');
-  addColorRow(panel, 'Hit Color',  'crosshair_color_hit',  '#FF0000');
+  addColorRow(panel, 'Idle Color', 'crosshair_color_idle', '#00FFCC');
+  addColorRow(panel, 'Hit Color',  'crosshair_color_hit',  '#FF2D55');
 }
 
 function renderAnimationsSection(panel) {
@@ -106,7 +106,7 @@ function renderAnimationsSection(panel) {
   addRangeRow(panel, 'Damage/frame',   'anim_damage_per_frame',  1.5, 0.1, 10,  0.1);
   addRangeRow(panel, 'Regen/frame',    'anim_regen_per_frame',   0.3, 0.0, 2.0, 0.05);
   addCheckRow(panel, 'Flash enabled',  'anim_flash_enable',      true);
-  addColorRow(panel, 'Flash color',    'anim_flash_color',       '#FF3300');
+  addColorRow(panel, 'Flash color',    'anim_flash_color',       '#FF2D55');
   addCheckRow(panel, 'Shake enabled',   'anim_shake_enable',        true);
   addRangeRow(panel, 'Shake intensity', 'anim_shake_intensity',     4,    0,    15,   1);
   addRangeRow(panel, 'Burst threshold', 'anim_burst_threshold_ms',  1000, 100,  3000, 100);
@@ -122,7 +122,7 @@ function renderDeathMaskSection(panel) {
   title.textContent = 'Death Mask';
   panel.appendChild(title);
 
-  addColorRow(panel, 'Mask color',   'death_mask_color',   '#FF0000');
+  addColorRow(panel, 'Mask color',   'death_mask_color',   '#FF2D55');
   addRangeRow(panel, 'Mask opacity', 'death_mask_opacity',  0.6, 0.1, 1.0, 0.05);
 }
 
@@ -151,7 +151,7 @@ function renderMediaPipeSection(panel, onReinit) {
 
   // Status indicator shown while reinitializing
   const status = document.createElement('div');
-  status.style.cssText = 'font-size:10px; color:#D08A2E; min-height:14px;';
+  status.style.cssText = 'font-size:10px; color:#00FFCC; min-height:14px; letter-spacing:2px;';
   panel.appendChild(status);
 
   function withReinit(fn) {
@@ -181,19 +181,20 @@ function renderResetSection(panel) {
   btn.textContent = '↺  RESET SETTINGS';
   btn.style.cssText = [
     'width:100%',
-    'background:#1A1A1A',
-    'border:2px solid #5F624F',
-    'color:#D08A2E',
+    'background:transparent',
+    'border:1px solid #00FFCC',
+    'color:#00FFCC',
     'font-family:inherit',
     'font-weight:bold',
-    'font-size:13px',
-    'letter-spacing:2px',
+    'font-size:12px',
+    'letter-spacing:3px',
     'padding:10px',
     'cursor:pointer',
     'touch-action:manipulation',
+    'transition:background 0.15s',
   ].join(';');
-  btn.addEventListener('mouseenter', function() { btn.style.background = '#2A2A1A'; });
-  btn.addEventListener('mouseleave', function() { btn.style.background = '#1A1A1A'; });
+  btn.addEventListener('mouseenter', function() { btn.style.background = 'rgba(0,255,204,0.1)'; });
+  btn.addEventListener('mouseleave', function() { btn.style.background = 'transparent'; });
   btn.addEventListener('click', function() {
     clearConfig();
     resetAllControls();
@@ -223,7 +224,7 @@ function resetAllControls() {
 // #region Row builders
 function addSeparator(parent) {
   const sep = document.createElement('div');
-  sep.style.cssText = 'height:1px; background:#5F624F; margin:4px 0;';
+  sep.style.cssText = 'height:1px; background:rgba(0,255,204,0.15); margin:4px 0;';
   parent.appendChild(sep);
 }
 
@@ -276,9 +277,9 @@ function addSelectRow(parent, label, key, defaultVal, options, onChange) {
   const row    = makeRow(label);
   const select = document.createElement('select');
   select.style.cssText = [
-    'background:#1A1A1A',
-    'color:#E7DFAF',
-    'border:1px solid #5F624F',
+    'background:#000810',
+    'color:#D0FFEE',
+    'border:1px solid rgba(0,255,204,0.3)',
     'font-family:inherit',
     'font-size:11px',
     'padding:2px 4px',

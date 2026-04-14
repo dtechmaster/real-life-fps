@@ -250,8 +250,8 @@ function drawLifeBar(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeig
 
   ctx.save();
 
-  ctx.globalAlpha = 0.7;
-  ctx.fillStyle   = '#111111';
+  ctx.globalAlpha = 0.75;
+  ctx.fillStyle   = '#000810';
   ctx.fillRect(bx - 1, by - 1, BAR_WIDTH + 2, BAR_HEIGHT + 2);
   ctx.globalAlpha = 1;
 
@@ -259,12 +259,12 @@ function drawLifeBar(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeig
   ctx.fillStyle   = healthColor(health);
   ctx.fillRect(bx, by, fillWidth, BAR_HEIGHT);
 
-  ctx.strokeStyle = '#5F624F';
+  ctx.strokeStyle = '#00FFCC';
   ctx.lineWidth   = 1;
   ctx.strokeRect(bx, by, BAR_WIDTH, BAR_HEIGHT);
 
-  ctx.fillStyle  = '#E7DFAF';
-  ctx.font       = 'bold 14px "Courier New", monospace';
+  ctx.fillStyle  = '#D0FFEE';
+  ctx.font       = 'bold 13px "Share Tech Mono", "Courier New", monospace';
   ctx.textAlign  = 'center';
   ctx.fillText(Math.round(health), head.x, by - 6);
 
@@ -296,23 +296,24 @@ function findPersonHead(mask, maskWidth, maskHeight, displayWidth, displayHeight
 }
 
 function healthColor(hp) {
-  if (hp > 60) return '#00FF41';
-  if (hp > 30) return '#D08A2E';
-  return '#CC0000';
+  if (hp > 60) return '#00FFCC';
+  if (hp > 30) return '#FF8C00';
+  return '#FF2D55';
 }
 // #endregion
 
 // #region Score
 function drawScore(ctx) {
   ctx.save();
-  ctx.font        = 'bold 28px "Courier New", monospace';
+  ctx.font        = 'bold 22px "Share Tech Mono", "Courier New", monospace';
   ctx.textAlign   = 'left';
-  ctx.shadowColor = 'rgba(0,0,0,0.8)';
-  ctx.shadowBlur  = 8;
-  ctx.fillStyle   = '#D08A2E';
+  ctx.shadowColor = 'rgba(0, 255, 204, 0.4)';
+  ctx.shadowBlur  = 10;
+  ctx.fillStyle   = '#00FFCC';
   ctx.fillText('SCORE', 24, 46);
-  ctx.fillStyle   = '#E7DFAF';
-  ctx.fillText(score, 110, 46);
+  ctx.fillStyle   = '#D0FFEE';
+  ctx.shadowBlur  = 0;
+  ctx.fillText(score, 108, 46);
   ctx.restore();
 }
 // #endregion
@@ -322,7 +323,7 @@ const MAX_HOLES = 20;
 let _particles  = []; // tracers + sparks (short-lived)
 let _holes      = []; // bullet hole decals (slow fade)
 
-const SPARK_COLORS = ['#FF8800', '#FFCC00', '#FFFFFF'];
+const SPARK_COLORS = ['#00FFCC', '#FF2D55', '#FFFFFF'];
 
 function spawnTracer(cx, cy) {
   const bx = getConfig('anim_tracer_barrel_x', 0.5);
@@ -395,10 +396,10 @@ function tickParticles(ctx) {
       const headX    = p.x0 + (p.x1 - p.x0) * Math.min(1, progress + 0.05);
       const headY    = p.y0 + (p.y1 - p.y0) * Math.min(1, progress + 0.05);
       ctx.globalAlpha = p.life * 0.9;
-      ctx.strokeStyle = '#FFEE88';
+      ctx.strokeStyle = '#00FFCC';
       ctx.lineWidth   = 2;
-      ctx.shadowColor = '#FFCC00';
-      ctx.shadowBlur  = 8;
+      ctx.shadowColor = '#00FFAA';
+      ctx.shadowBlur  = 10;
       ctx.beginPath();
       ctx.moveTo(tailX, tailY);
       ctx.lineTo(headX, headY);
@@ -453,32 +454,32 @@ function drawAmmoBar(ctx, displayWidth, displayHeight) {
 
   ctx.save();
 
-  ctx.globalAlpha = 0.7;
-  ctx.fillStyle   = '#111111';
+  ctx.globalAlpha = 0.75;
+  ctx.fillStyle   = '#000810';
   ctx.fillRect(bx - 1, by - 1, BAR_W + 2, BAR_H + 2);
   ctx.globalAlpha = 1;
 
   if (!empty) {
-    ctx.fillStyle = ammo > 30 ? '#D08A2E' : '#CC0000';
+    ctx.fillStyle = ammo > 30 ? '#FF8C00' : '#FF2D55';
     ctx.fillRect(bx, by, BAR_W * (ammo / maxAmmo), BAR_H);
   }
 
-  ctx.strokeStyle = '#5F624F';
+  ctx.strokeStyle = '#00FFCC';
   ctx.lineWidth   = 1;
   ctx.strokeRect(bx, by, BAR_W, BAR_H);
 
-  ctx.font      = 'bold 14px "Courier New", monospace';
-  ctx.fillStyle = '#E7DFAF';
+  ctx.font      = 'bold 13px "Share Tech Mono", "Courier New", monospace';
+  ctx.fillStyle = '#D0FFEE';
   ctx.textAlign = 'right';
   ctx.fillText(`${ammo} / ${maxAmmo}`, bx + BAR_W, by - 6);
 
-  ctx.fillStyle = '#D08A2E';
+  ctx.fillStyle = '#00FFCC';
   ctx.textAlign = 'left';
   ctx.fillText('AMMO', bx, by - 6);
 
   if (empty && Math.floor(Date.now() / 400) % 2 === 0) {
-    ctx.fillStyle = '#CC0000';
-    ctx.font      = 'bold 18px "Courier New", monospace';
+    ctx.fillStyle = '#FF2D55';
+    ctx.font      = 'bold 16px "Share Tech Mono", "Courier New", monospace';
     ctx.textAlign = 'center';
     ctx.fillText('RELOAD  [Shift+R]', bx + BAR_W / 2, by - 26);
   }

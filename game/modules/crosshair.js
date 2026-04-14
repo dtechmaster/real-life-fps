@@ -76,8 +76,8 @@ function drawCrosshair(ctx, w, h, onPerson) {
   const size      = getConfig('crosshair_size',       12);
   const gap       = getConfig('crosshair_gap',        4);
   const thickness = getConfig('crosshair_thickness',  2);
-  const colorIdle = getConfig('crosshair_color_idle', '#00FF41');
-  const colorHit  = getConfig('crosshair_color_hit',  '#FF0000');
+  const colorIdle = getConfig('crosshair_color_idle', '#00FFCC');
+  const colorHit  = getConfig('crosshair_color_hit',  '#FF2D55');
 
   const cx    = Math.floor(w / 2) + _recoilX;
   const cy    = Math.floor(h / 2) + _recoilY;

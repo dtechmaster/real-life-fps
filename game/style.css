@@ -9,7 +9,7 @@ body {
   overflow: hidden;
   width: 100vw;
   height: 100vh;
-  font-family: 'Courier New', monospace;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
   font-size: 16px;
   -webkit-tap-highlight-color: transparent;
 }
@@ -35,23 +35,28 @@ video { display: none; }
 #fullscreen-btn {
   position: fixed;
   z-index: 100;
-  background: #1A1A1A;
-  border: 2px solid #5F624F;
-  color: #E7DFAF;
-  font-size: 26px;
-  width: 52px; height: 52px;
+  background: rgba(0, 8, 14, 0.85);
+  border: 1px solid #00FFCC;
+  color: #00FFCC;
+  font-size: 22px;
+  width: 48px; height: 48px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   touch-action: manipulation;
+  box-shadow: 0 0 8px rgba(0, 255, 204, 0.25);
+  transition: background 0.15s, box-shadow 0.15s;
 }
 
 #cog-btn         { top: 16px; right: 16px; }
-#restart-btn     { top: 16px; right: 80px; }
-#fullscreen-btn  { top: 16px; right: 144px; }
+#restart-btn     { top: 16px; right: 76px; }
+#fullscreen-btn  { top: 16px; right: 136px; }
 
 #cog-btn:hover,
 #restart-btn:hover,
-#fullscreen-btn:hover { background: #8C8A6A; color: #111111; }
+#fullscreen-btn:hover {
+  background: rgba(0, 255, 204, 0.12);
+  box-shadow: 0 0 18px rgba(0, 255, 204, 0.55);
+}
 
 #fullscreen-btn .fs-exit  { display: none; }
 #fullscreen-btn.is-fullscreen .fs-enter { display: none; }
@@ -59,12 +64,12 @@ video { display: none; }
 
 #ios-tip {
   position: fixed;
-  top: 80px;
+  top: 76px;
   right: 16px;
   z-index: 200;
-  background: #111111;
-  border: 2px solid #5F624F;
-  color: #E7DFAF;
+  background: rgba(0, 8, 14, 0.97);
+  border: 1px solid #00FFCC;
+  color: #D0FFEE;
   padding: 16px 18px;
   width: min(300px, calc(100vw - 32px));
   display: flex;
@@ -72,9 +77,10 @@ video { display: none; }
   gap: 10px;
   font-size: 14px;
   line-height: 1.5;
+  box-shadow: 0 0 24px rgba(0, 255, 204, 0.15);
 }
 
-#ios-tip strong { color: #D08A2E; }
+#ios-tip strong { color: #00FFCC; }
 
 .ios-share-icon {
   font-size: 16px;
@@ -83,30 +89,32 @@ video { display: none; }
 
 #ios-tip-close {
   align-self: flex-end;
-  background: #8C8A6A;
-  border: 2px solid #5F624F;
-  color: #111111;
-  font-family: 'Courier New', monospace;
+  background: transparent;
+  border: 1px solid #00FFCC;
+  color: #00FFCC;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
   font-weight: bold;
   font-size: 13px;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
   padding: 6px 16px;
   cursor: pointer;
   touch-action: manipulation;
+  transition: background 0.15s;
 }
+#ios-tip-close:hover { background: rgba(0, 255, 204, 0.12); }
 
 #barrel-tip {
   position: fixed;
   z-index: 150;
-  width: 60px;
-  height: 60px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  border: 2px solid #FFEE88;
+  border: 1.5px solid #00FFCC;
   background:
-    linear-gradient(#FFEE88, #FFEE88) center / 1.5px 45% no-repeat,
-    linear-gradient(#FFEE88, #FFEE88) center / 45% 1.5px no-repeat,
+    linear-gradient(#00FFCC, #00FFCC) center / 1.5px 40% no-repeat,
+    linear-gradient(#00FFCC, #00FFCC) center / 40% 1.5px no-repeat,
     transparent;
-  box-shadow: 0 0 10px #FFCC00, inset 0 0 6px rgba(255, 204, 0, 0.15);
+  box-shadow: 0 0 12px rgba(0, 255, 204, 0.45), inset 0 0 6px rgba(0, 255, 204, 0.08);
   transform: translate(-50%, -50%);
   cursor: crosshair;
   touch-action: manipulation;
@@ -119,10 +127,10 @@ video { display: none; }
   content: '';
   position: absolute;
   top: 50%; left: 50%;
-  width: 8px; height: 8px;
+  width: 6px; height: 6px;
   border-radius: 50%;
-  background: #FFEE88;
-  box-shadow: 0 0 6px #FFCC00;
+  background: #00FFCC;
+  box-shadow: 0 0 8px #00FFCC;
   transform: translate(-50%, -50%);
 }
 /* #endregion */
@@ -130,11 +138,11 @@ video { display: none; }
 /* #region Config panel */
 #config-panel {
   position: fixed;
-  top: 76px; right: 16px;
+  top: 72px; right: 16px;
   z-index: 100;
-  background: #111111;
-  border: 2px solid #5F624F;
-  color: #E7DFAF;
+  background: rgba(0, 8, 14, 0.97);
+  border: 1px solid #00FFCC;
+  color: #D0FFEE;
   padding: 20px;
   width: 320px;
   display: flex;
@@ -143,6 +151,7 @@ video { display: none; }
   max-height: calc(100vh - 96px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  box-shadow: 0 0 28px rgba(0, 255, 204, 0.12);
 }
 #config-panel.hidden { display: none; }
 
@@ -155,11 +164,11 @@ video { display: none; }
 }
 
 .panel-section-title {
-  color: #D08A2E;
-  font-size: 14px;
-  letter-spacing: 2px;
+  color: #00FFCC;
+  font-size: 11px;
+  letter-spacing: 3px;
   text-transform: uppercase;
-  border-bottom: 1px solid #5F624F;
+  border-bottom: 1px solid rgba(0, 255, 204, 0.25);
   padding-bottom: 6px;
 }
 
@@ -170,16 +179,16 @@ video { display: none; }
   gap: 10px;
 }
 .config-row label {
-  font-size: 15px;
-  color: #D8D8C8;
+  font-size: 13px;
+  color: #6AADA0;
   flex: 1;
 }
 
-.config-row input[type="range"]    { flex: 1; accent-color: #D08A2E; height: 6px; }
+.config-row input[type="range"]    { flex: 1; accent-color: #00FFCC; height: 4px; }
 .config-row input[type="color"]    { width: 44px; height: 32px; border: none; padding: 0; cursor: pointer; background: none; }
-.config-row input[type="checkbox"] { accent-color: #D08A2E; width: 22px; height: 22px; }
-.config-row .value-label           { color: #B7B08A; font-size: 14px; min-width: 36px; text-align: right; }
-.config-row select                 { font-size: 14px; }
+.config-row input[type="checkbox"] { accent-color: #00FFCC; width: 20px; height: 20px; }
+.config-row .value-label           { color: #00FFCC; font-size: 12px; min-width: 36px; text-align: right; }
+.config-row select                 { font-size: 12px; }
 /* #endregion */
 
 /* #region Start screen */
@@ -188,7 +197,7 @@ video { display: none; }
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(0, 0, 0, 0.96);
+  background: rgba(0, 0, 0, 0.97);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -198,88 +207,128 @@ video { display: none; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding: 36px 28px;
-  border: 2px solid #5F624F;
-  background: #111111;
+  gap: 24px;
+  padding: 40px 32px;
+  /* subtle overall border */
+  border: 1px solid rgba(0, 255, 204, 0.25);
+  background: #000810;
   width: min(480px, 90vw);
   text-align: center;
+  position: relative;
+  box-shadow: 0 0 48px rgba(0, 255, 204, 0.08);
+  /* 4-corner bracket accent via layered background gradients */
+  background-image:
+    linear-gradient(#00FFCC, #00FFCC),
+    linear-gradient(#00FFCC, #00FFCC),
+    linear-gradient(#00FFCC, #00FFCC),
+    linear-gradient(#00FFCC, #00FFCC),
+    linear-gradient(#00FFCC, #00FFCC),
+    linear-gradient(#00FFCC, #00FFCC),
+    linear-gradient(#00FFCC, #00FFCC),
+    linear-gradient(#00FFCC, #00FFCC);
+  background-size:
+    2px 28px, 28px 2px,
+    2px 28px, 28px 2px,
+    2px 28px, 28px 2px,
+    2px 28px, 28px 2px;
+  background-position:
+    top left,    top left,
+    top right,   top right,
+    bottom left, bottom left,
+    bottom right,bottom right;
+  background-repeat: no-repeat;
+  background-color: #000810;
 }
 
 .start-title {
-  color: #D08A2E;
-  font-size: clamp(22px, 7vw, 46px);
-  letter-spacing: 4px;
-  font-weight: bold;
+  color: #00FFCC;
+  font-family: 'Orbitron', 'Courier New', monospace;
+  font-size: clamp(20px, 6vw, 40px);
+  font-weight: 900;
+  letter-spacing: 6px;
+  text-shadow: 0 0 24px rgba(0, 255, 204, 0.55), 0 0 60px rgba(0, 255, 204, 0.2);
+  line-height: 1.2;
 }
 
 .start-sub {
-  color: #E7DFAF;
-  font-size: clamp(13px, 3.5vw, 17px);
+  color: #6AADA0;
+  font-size: clamp(13px, 3.5vw, 15px);
+  letter-spacing: 1px;
 }
 
 .start-hint {
-  color: #77776B;
-  font-size: clamp(11px, 2.5vw, 13px);
+  color: #245040;
+  font-size: clamp(11px, 2.5vw, 12px);
+  letter-spacing: 1px;
 }
 
 #start-btn {
-  background: #8C8A6A;
-  border: 2px solid #5F624F;
-  color: #111111;
-  font-family: 'Courier New', monospace;
+  background: transparent;
+  border: 1px solid #00FFCC;
+  color: #00FFCC;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
   font-weight: bold;
-  font-size: clamp(14px, 3.5vw, 18px);
-  letter-spacing: 2px;
+  font-size: clamp(13px, 3.5vw, 16px);
+  letter-spacing: 3px;
   padding: 16px 32px;
   cursor: pointer;
   width: 100%;
   touch-action: manipulation;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 8px rgba(0, 255, 204, 0.15);
 }
-#start-btn:hover   { background: #B7B08A; }
-#start-btn:disabled { opacity: 0.5; cursor: default; }
+#start-btn:hover {
+  background: rgba(0, 255, 204, 0.1);
+  box-shadow: 0 0 22px rgba(0, 255, 204, 0.4);
+}
+#start-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
 
 .start-error {
-  color: #CC0000;
-  font-size: 14px;
+  color: #FF2D55;
+  font-size: 13px;
 }
 /* #endregion */
 
 /* #region Loading screen */
 #loading-screen {
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .loading-title {
-  color: #D08A2E;
-  font-size: clamp(16px, 5vw, 26px);
-  letter-spacing: 4px;
-  animation: blink 1s step-end infinite;
+  color: #00FFCC;
+  font-family: 'Orbitron', 'Courier New', monospace;
+  font-size: clamp(15px, 5vw, 22px);
+  letter-spacing: 6px;
+  font-weight: 700;
+  text-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+  animation: blink 1.2s step-end infinite;
 }
 
 .loading-sub {
-  color: #77776B;
-  font-size: clamp(12px, 3vw, 14px);
+  color: #245040;
+  font-size: clamp(12px, 3vw, 13px);
+  letter-spacing: 2px;
 }
 
 #loading-retry {
-  background: #8C8A6A;
-  border: 2px solid #5F624F;
-  color: #111111;
-  font-family: 'Courier New', monospace;
+  background: transparent;
+  border: 1px solid #00FFCC;
+  color: #00FFCC;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
   font-weight: bold;
-  font-size: 16px;
-  letter-spacing: 2px;
+  font-size: 15px;
+  letter-spacing: 3px;
   padding: 12px 28px;
   cursor: pointer;
   margin-top: 8px;
   touch-action: manipulation;
+  transition: background 0.2s;
 }
-#loading-retry:hover { background: #B7B08A; }
+#loading-retry:hover { background: rgba(0, 255, 204, 0.1); }
 
 @keyframes blink {
-  50% { opacity: 0.3; }
+  50% { opacity: 0.15; }
 }
 /* #endregion */
 
@@ -287,8 +336,8 @@ video { display: none; }
 @media (orientation: landscape) and (max-height: 500px) {
   /* HUD buttons — stack on the right side instead of top */
   #cog-btn        { top: 16px;   right: 16px; }
-  #restart-btn    { top: 76px;   right: 16px; }
-  #fullscreen-btn { top: 140px;  right: 16px; }
+  #restart-btn    { top: 72px;   right: 16px; }
+  #fullscreen-btn { top: 132px;  right: 16px; }
 
   /* Config panel — shift below stacked buttons, cap height tightly */
   #config-panel {
@@ -312,17 +361,17 @@ video { display: none; }
 
   .start-title {
     width: 100%;
-    font-size: clamp(18px, 5vw, 28px);
+    font-size: clamp(18px, 5vw, 26px);
   }
 
   .start-sub,
   .start-hint {
-    font-size: clamp(11px, 2vw, 14px);
+    font-size: clamp(11px, 2vw, 13px);
   }
 
   #start-btn {
     padding: 10px 24px;
-    font-size: clamp(13px, 2.5vw, 16px);
+    font-size: clamp(12px, 2.5vw, 15px);
   }
 
   #loading-screen {
@@ -330,7 +379,7 @@ video { display: none; }
   }
 
   .loading-title {
-    font-size: clamp(14px, 4vw, 20px);
+    font-size: clamp(13px, 4vw, 18px);
   }
 }
 /* #endregion */
