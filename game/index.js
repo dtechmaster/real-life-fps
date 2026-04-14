@@ -105,13 +105,40 @@ restartBtn.addEventListener('click', restartGame);
 // #endregion
 
 // #region Load game
+
+/** Rejects after `ms` milliseconds — wraps any promise with a timeout. */
+function withTimeout(promise, ms, msg) {
+  return new Promise(function(resolve, reject) {
+    const timer = setTimeout(function() {
+      reject(new Error(msg ?? `Timed out after ${ms / 1000}s`));
+    }, ms);
+    promise.then(
+      function(v) { clearTimeout(timer); resolve(v); },
+      function(e) { clearTimeout(timer); reject(e); }
+    );
+  });
+}
+
 async function loadGame() {
   loadingError.classList.add('hidden');
   loadingRetry.classList.add('hidden');
   loadingStatus.classList.remove('hidden');
 
+  // Animate status text so the user knows something is happening
+  const statusMessages = [
+    'Downloading AI runtime…',
+    'Downloading AI model…',
+    'Still loading — slow connection? Hang tight…',
+    'Almost there…',
+  ];
+  let msgIdx = 0;
+  setLoadingStatus(statusMessages[msgIdx]);
+  const statusTimer = setInterval(function() {
+    msgIdx = Math.min(msgIdx + 1, statusMessages.length - 1);
+    setLoadingStatus(statusMessages[msgIdx]);
+  }, 7000);
+
   try {
-    setLoadingStatus('Listing cameras…');
     const cameras = await enumerateCameras();
 
     // Wire up modules once
@@ -130,13 +157,19 @@ async function loadGame() {
       await reinitSegmenter();
     });
 
-    setLoadingStatus('Downloading AI runtime (WASM)…');
-    await initSegmenter(video, onMask);
+    // 60s timeout — createFromOptions can stall silently on bad connections
+    await withTimeout(
+      initSegmenter(video, onMask),
+      60000,
+      'Model download timed out. Tap "Try Again" — it loads from cache on retry.'
+    );
 
+    clearInterval(statusTimer);
     showGame();
   } catch (err) {
+    clearInterval(statusTimer);
     console.error('Game load error:', err);
-    showLoadingError('Failed to load AI model. Check your connection and try again.\n' + (err?.message ?? err));
+    showLoadingError(err?.message ?? 'Failed to load. Check your connection and try again.');
   }
 }
 // #endregion
