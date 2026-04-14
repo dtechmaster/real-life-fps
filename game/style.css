@@ -185,6 +185,21 @@ video { display: none; }
   font-size: clamp(12px, 3vw, 14px);
 }
 
+#loading-retry {
+  background: #8C8A6A;
+  border: 2px solid #5F624F;
+  color: #111111;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 16px;
+  letter-spacing: 2px;
+  padding: 12px 28px;
+  cursor: pointer;
+  margin-top: 8px;
+  touch-action: manipulation;
+}
+#loading-retry:hover { background: #B7B08A; }
+
 @keyframes blink {
   50% { opacity: 0.3; }
 }

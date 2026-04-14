@@ -35,7 +35,9 @@
   <!-- Loading screen -->
   <div id="loading-screen" class="hidden">
     <p class="loading-title">LOADING AI MODEL</p>
-    <p class="loading-sub">This may take a moment on first load…</p>
+    <p id="loading-status" class="loading-sub">Initializing…</p>
+    <p id="loading-error"  class="start-error hidden"></p>
+    <button id="loading-retry" class="hidden">↺ TRY AGAIN</button>
   </div>
 
   <script type="module" src="index.js"></script>
