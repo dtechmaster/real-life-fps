@@ -12,7 +12,6 @@ body {
   font-family: 'Courier New', monospace;
   font-size: 16px;
   -webkit-tap-highlight-color: transparent;
-  touch-action: none;
 }
 
 video { display: none; }

@@ -28,20 +28,6 @@ export function initShooter() {
     if (e.button === 0) mouseDown = false;
   });
 
-  // Touch: only intercept touches that land on a canvas (shooting area).
-  // Calling preventDefault only on canvas touches lets UI buttons work normally.
-  document.addEventListener('touchstart', function(e) {
-    if (e.target.tagName === 'CANVAS') {
-      e.preventDefault();
-      mouseDown = true;
-    }
-  }, { passive: false });
-  document.addEventListener('touchend', function(e) {
-    if (e.target.tagName === 'CANVAS') mouseDown = false;
-  });
-  document.addEventListener('touchcancel', function() {
-    mouseDown = false;
-  });
 
   document.addEventListener('keydown', function(e) {
     if (e.shiftKey && e.key === 'S') shiftSDown = true;
