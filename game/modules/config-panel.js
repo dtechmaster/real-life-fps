@@ -70,8 +70,8 @@ function renderSilhouetteSection(panel) {
   panel.appendChild(title);
 
   addColorRow(panel, 'Color',     'silhouette_color',     '#00FF41');
-  addRangeRow(panel, 'Thickness', 'silhouette_thickness', 3,   1,   20,  1);
-  addRangeRow(panel, 'Opacity',   'silhouette_opacity',   1.0, 0.1, 1.0, 0.05);
+  addRangeRow(panel, 'Thickness', 'silhouette_thickness', 0,   0,   20,  1);
+  addRangeRow(panel, 'Opacity',   'silhouette_opacity',   0,   0,   1.0, 0.05);
   addCheckRow(panel, 'Smooth',    'silhouette_smooth',    true);
 }
 

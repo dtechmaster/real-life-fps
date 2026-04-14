@@ -14,8 +14,8 @@ const PERSON_CATEGORY = 1; // segmenter normalizes all models to binary mask
  */
 export function drawSilhouette(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeight) {
   const color     = getConfig('silhouette_color',     '#00FF41');
-  const thickness = getConfig('silhouette_thickness', 3);
-  const opacity   = getConfig('silhouette_opacity',   1.0);
+  const thickness = getConfig('silhouette_thickness', 0);
+  const opacity   = getConfig('silhouette_opacity',   0);
   const smooth    = getConfig('silhouette_smooth',    true);
 
   ctx.clearRect(0, 0, displayWidth, displayHeight);
