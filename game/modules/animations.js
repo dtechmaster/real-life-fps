@@ -1,4 +1,5 @@
 import { onShooterEvent, isFiring, getAmmo, getMaxAmmo } from './shooter.js';
+import { getCrosshairPos }          from './crosshair.js';
 import { getConfig }                from './storage.js';
 
 // #region State
@@ -8,6 +9,8 @@ let flashAlpha  = 0;
 let _gameCanvas = null;
 let score       = 0;
 let _wasDead    = false;
+let _displayWidth  = 800;
+let _displayHeight = 600;
 // #endregion
 
 // #region Audio
@@ -52,6 +55,7 @@ export function resetAnimations() {
   score      = 0;
   _wasDead   = false;
   if (_gameCanvas) _gameCanvas.style.transform = '';
+  clearParticles();
 }
 
 export function initAnimations(gameCanvas) {
@@ -59,9 +63,16 @@ export function initAnimations(gameCanvas) {
 
   onShooterEvent('onShootStart', function() {
     if (getConfig('anim_flash_enable', true)) flashAlpha = 0.35;
+    const pos = getCrosshairPos(_displayWidth, _displayHeight);
+    spawnSparks(pos.x, pos.y);
   });
 
-  onShooterEvent('onShoot', handleShotAudio);
+  onShooterEvent('onShoot', function() {
+    handleShotAudio();
+    const pos = getCrosshairPos(_displayWidth, _displayHeight);
+    spawnTracer(pos.x, pos.y);
+    spawnHole(pos.x, pos.y);
+  });
 
   onShooterEvent('onShootEnd', function() {
     stopBurst();
@@ -80,9 +91,13 @@ export function initAnimations(gameCanvas) {
  * @param {number}     displayHeight
  */
 export function tickAnimations(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeight) {
+  _displayWidth  = displayWidth;
+  _displayHeight = displayHeight;
   updateHealth();
   applyShake();
   drawDeathMask(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeight);
+  tickParticles(ctx);
+  drawBarrelTip(ctx, displayWidth, displayHeight);
   drawFlash(ctx, displayWidth, displayHeight);
   drawLifeBar(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeight);
   drawAmmoBar(ctx, displayWidth, displayHeight);
@@ -242,6 +257,159 @@ function drawScore(ctx) {
   ctx.fillStyle   = '#E7DFAF';
   ctx.fillText(score, 110, 46);
   ctx.restore();
+}
+// #endregion
+
+// #region Particles
+const MAX_HOLES   = 20;
+let _particles    = []; // tracers + sparks (short-lived)
+let _holes        = []; // bullet hole decals (slow fade)
+
+const SPARK_COLORS = ['#FF8800', '#FFCC00', '#FFFFFF'];
+
+function spawnTracer(cx, cy) {
+  const bx = getConfig('anim_tracer_barrel_x', 0.5);
+  const by = getConfig('anim_tracer_barrel_y', 0.85);
+  _particles.push({
+    type : 'tracer',
+    x0   : _displayWidth  * bx,
+    y0   : _displayHeight * by,
+    x1   : cx,
+    y1   : cy,
+    life : 1.0,
+  });
+}
+
+function spawnSparks(cx, cy) {
+  for (let i = 0; i < 10; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 4;
+    _particles.push({
+      type  : 'spark',
+      x     : cx,
+      y     : cy,
+      vx    : Math.cos(angle) * speed,
+      vy    : Math.sin(angle) * speed,
+      life  : 1.0,
+      color : SPARK_COLORS[Math.floor(Math.random() * SPARK_COLORS.length)],
+    });
+  }
+}
+
+function spawnHole(cx, cy) {
+  const spread = 15;
+  const hx = cx + (Math.random() - 0.5) * spread * 2;
+  const hy = cy + (Math.random() - 0.5) * spread * 2;
+  if (_holes.length >= MAX_HOLES) _holes.shift(); // remove oldest
+  _holes.push({ x: hx, y: hy, life: 1.0 });
+}
+
+function tickParticles(ctx) {
+  // Draw holes first (underneath sparks)
+  for (const h of _holes) {
+    if (h.life <= 0) continue;
+    ctx.save();
+    ctx.globalAlpha = h.life * 0.85;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#111111';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, 6, 0, Math.PI * 2);
+    ctx.strokeStyle = '#CC0000';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+    h.life = Math.max(0, h.life - 0.006);
+  }
+
+  // Update and draw short-lived particles
+  for (let i = _particles.length - 1; i >= 0; i--) {
+    const p = _particles[i];
+    if (p.life <= 0) { _particles.splice(i, 1); continue; }
+
+    if (p.type === 'tracer') {
+      // Streak travels from barrel (x0,y0) to crosshair (x1,y1) over 3 frames
+      const progress = 1 - p.life; // 0→1 as life 1→0
+      const tailT    = Math.max(0, progress - 0.35);
+      const tailX    = p.x0 + (p.x1 - p.x0) * tailT;
+      const tailY    = p.y0 + (p.y1 - p.y0) * tailT;
+      const headX    = p.x0 + (p.x1 - p.x0) * Math.min(1, progress + 0.05);
+      const headY    = p.y0 + (p.y1 - p.y0) * Math.min(1, progress + 0.05);
+      ctx.save();
+      ctx.globalAlpha  = p.life * 0.9;
+      ctx.strokeStyle  = '#FFEE88';
+      ctx.lineWidth    = 2;
+      ctx.shadowColor  = '#FFCC00';
+      ctx.shadowBlur   = 8;
+      ctx.beginPath();
+      ctx.moveTo(tailX, tailY);
+      ctx.lineTo(headX, headY);
+      ctx.stroke();
+      ctx.restore();
+      p.life -= 0.35; // ~3 frames
+
+    } else if (p.type === 'spark') {
+      p.vy += 0.4; // gravity
+      p.x  += p.vx;
+      p.y  += p.vy;
+      ctx.save();
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle   = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      p.life -= 0.06; // ~16 frames (~250ms at 60fps)
+    }
+  }
+}
+
+function drawBarrelTip(ctx, w, h) {
+  const bx = getConfig('anim_tracer_barrel_x', 0.5);
+  const by = getConfig('anim_tracer_barrel_y', 0.85);
+  const x  = w * bx;
+  const y  = h * by;
+  const R  = 10;
+  const r  = 3;
+  const ARM = 18;
+
+  ctx.save();
+  ctx.globalAlpha  = 0.85;
+  ctx.strokeStyle  = '#FFEE88';
+  ctx.fillStyle    = '#FFEE88';
+  ctx.lineWidth    = 1.5;
+  ctx.shadowColor  = '#FFCC00';
+  ctx.shadowBlur   = 6;
+
+  // Outer circle
+  ctx.beginPath();
+  ctx.arc(x, y, R, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Four tick marks outside the circle
+  ctx.beginPath();
+  ctx.moveTo(x,         y - R - 4);
+  ctx.lineTo(x,         y - R - 4 - ARM * 0.4);
+  ctx.moveTo(x,         y + R + 4);
+  ctx.lineTo(x,         y + R + 4 + ARM * 0.4);
+  ctx.moveTo(x - R - 4, y);
+  ctx.lineTo(x - R - 4 - ARM * 0.4, y);
+  ctx.moveTo(x + R + 4, y);
+  ctx.lineTo(x + R + 4 + ARM * 0.4, y);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function clearParticles() {
+  _particles = [];
+  _holes     = [];
 }
 // #endregion
 

@@ -105,6 +105,8 @@ function renderAnimationsSection(panel) {
   addCheckRow(panel, 'Shake enabled',   'anim_shake_enable',        true);
   addRangeRow(panel, 'Shake intensity', 'anim_shake_intensity',     4,    0,    15,   1);
   addRangeRow(panel, 'Burst threshold', 'anim_burst_threshold_ms',  1000, 100,  3000, 100);
+  addRangeRow(panel, 'Tracer barrel X', 'anim_tracer_barrel_x',     0.5,  0.0,  1.0,  0.05);
+  addRangeRow(panel, 'Tracer barrel Y', 'anim_tracer_barrel_y',     0.85, 0.5,  1.0,  0.05);
 }
 
 function renderDeathMaskSection(panel) {

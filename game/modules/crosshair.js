@@ -30,6 +30,14 @@ export function updateCrosshair(mask, maskWidth, maskHeight, ctx, displayWidth, 
 export function isCrosshairOnPerson() {
   return _isOnPerson;
 }
+
+/** Returns the current crosshair position (center + recoil offset). */
+export function getCrosshairPos(w, h) {
+  return {
+    x: Math.floor(w / 2) + _recoilX,
+    y: Math.floor(h / 2) + _recoilY,
+  };
+}
 // #endregion
 
 // #region Recoil
