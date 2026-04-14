@@ -18,4 +18,11 @@ export function setConfig(key, value) {
   localStorage.setItem(`rlFPS_${key}`, JSON.stringify(value));
   _cache[key] = value;
 }
+
+export function clearConfig() {
+  Object.keys(_cache).forEach(function(key) { delete _cache[key]; });
+  Object.keys(localStorage)
+    .filter(function(k) { return k.startsWith('rlFPS_'); })
+    .forEach(function(k) { localStorage.removeItem(k); });
+}
 // #endregion

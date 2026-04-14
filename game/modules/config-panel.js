@@ -1,9 +1,11 @@
-import { getConfig, setConfig } from './storage.js';
+import { getConfig, setConfig, clearConfig } from './storage.js';
 import { MODELS }               from './segmenter.js';
 import { syncBarrelTip }        from './animations.js';
 
 // #region Config panel bootstrap
 let _cameraSelect = null;
+// Tracks every control so resetAllControls() can restore defaults in-place
+const _controls = [];
 
 /**
  * @param {() => Promise<void>} onSegmenterReinit - called when model/delegate changes
@@ -23,6 +25,7 @@ export function initConfigPanel(onSegmenterReinit) {
   renderDeathMaskSection(panel);
   renderControlsSection(panel);
   renderMediaPipeSection(panel, onSegmenterReinit);
+  renderResetSection(panel);
 }
 
 function renderCameraSection(panel) {
@@ -171,6 +174,52 @@ function renderMediaPipeSection(panel, onReinit) {
 }
 // #endregion
 
+function renderResetSection(panel) {
+  addSeparator(panel);
+
+  const btn = document.createElement('button');
+  btn.textContent = '↺  RESET SETTINGS';
+  btn.style.cssText = [
+    'width:100%',
+    'background:#1A1A1A',
+    'border:2px solid #5F624F',
+    'color:#D08A2E',
+    'font-family:inherit',
+    'font-weight:bold',
+    'font-size:13px',
+    'letter-spacing:2px',
+    'padding:10px',
+    'cursor:pointer',
+    'touch-action:manipulation',
+  ].join(';');
+  btn.addEventListener('mouseenter', function() { btn.style.background = '#2A2A1A'; });
+  btn.addEventListener('mouseleave', function() { btn.style.background = '#1A1A1A'; });
+  btn.addEventListener('click', function() {
+    clearConfig();
+    resetAllControls();
+    syncBarrelTip();
+  });
+  panel.appendChild(btn);
+}
+
+function resetAllControls() {
+  for (const ctrl of _controls) {
+    setConfig(ctrl.key, ctrl.defaultVal);
+    if (ctrl.type === 'range') {
+      ctrl.input.value = ctrl.defaultVal;
+      if (ctrl.valueLabel) ctrl.valueLabel.textContent = ctrl.defaultVal;
+      if (ctrl.onChange) ctrl.onChange(ctrl.defaultVal);
+    } else if (ctrl.type === 'color') {
+      ctrl.input.value = ctrl.defaultVal;
+    } else if (ctrl.type === 'checkbox') {
+      ctrl.input.checked = ctrl.defaultVal;
+    } else if (ctrl.type === 'select') {
+      ctrl.input.value = ctrl.defaultVal;
+    }
+  }
+}
+// #endregion
+
 // #region Row builders
 function addSeparator(parent) {
   const sep = document.createElement('div');
@@ -186,6 +235,7 @@ function addColorRow(parent, label, key, defaultVal) {
   input.addEventListener('input', function() { setConfig(key, input.value); });
   row.appendChild(input);
   parent.appendChild(row);
+  _controls.push({ type: 'color', input, key, defaultVal });
 }
 
 function addRangeRow(parent, label, key, defaultVal, min, max, step, onChange) {
@@ -208,6 +258,7 @@ function addRangeRow(parent, label, key, defaultVal, min, max, step, onChange) {
   row.appendChild(input);
   row.appendChild(vLabel);
   parent.appendChild(row);
+  _controls.push({ type: 'range', input, key, defaultVal, valueLabel: vLabel, onChange });
 }
 
 function addCheckRow(parent, label, key, defaultVal) {
@@ -218,6 +269,7 @@ function addCheckRow(parent, label, key, defaultVal) {
   input.addEventListener('change', function() { setConfig(key, input.checked); });
   row.appendChild(input);
   parent.appendChild(row);
+  _controls.push({ type: 'checkbox', input, key, defaultVal });
 }
 
 function addSelectRow(parent, label, key, defaultVal, options, onChange) {
@@ -245,6 +297,7 @@ function addSelectRow(parent, label, key, defaultVal, options, onChange) {
   });
   row.appendChild(select);
   parent.appendChild(row);
+  _controls.push({ type: 'select', input: select, key, defaultVal });
 }
 
 function makeRow(label) {
