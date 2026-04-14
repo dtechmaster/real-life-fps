@@ -24,9 +24,47 @@ video { display: none; }
   width: 100%; height: 100%;
 }
 
-#webcam-canvas { z-index: 0; }
-#game-canvas   { z-index: 1; will-change: transform; }
-#hud-canvas    { z-index: 2; }
+#webcam-canvas  { z-index: 0; }
+#game-canvas    { z-index: 1; will-change: transform; }
+#hud-canvas     { z-index: 2; }
+#weather-canvas { z-index: 3; pointer-events: none; }
+/* #endregion */
+
+/* #region Weather HUD */
+#weather-hud {
+  position: fixed;
+  bottom: 24px;
+  left: 20px;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.w-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+}
+
+.w-icon  { font-size: 18px; line-height: 1; }
+.w-temp  { color: #D0FFEE; font-size: 15px; letter-spacing: 1px; }
+.w-label { color: #2A7060; font-size: 11px; letter-spacing: 3px; }
+
+.w-hint {
+  color: #1A4535;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  animation: hint-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes hint-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.9; }
+}
 /* #endregion */
 
 /* #region HUD buttons */

@@ -5,23 +5,27 @@ import { initShooter, tickShooter, isFiring, resetShooter }   from './modules/sh
 import { initAnimations, tickAnimations, resetAnimations }    from './modules/animations.js';
 import { initConfigPanel, populateCameras }                   from './modules/config-panel.js';
 import { syncBarrelTip }                                      from './modules/animations.js';
+import { requestGeolocation, fetchWeather }                   from './modules/weather.js';
+import { initWeatherFx, resizeWeatherFx, getWeatherHudData }  from './modules/weather-fx.js';
 
 // #region Canvas setup
-const video        = document.getElementById('webcam');
-const webcamCanvas = document.getElementById('webcam-canvas');
-const gameCanvas   = document.getElementById('game-canvas');
-const hudCanvas    = document.getElementById('hud-canvas');
-const webcamCtx    = webcamCanvas.getContext('2d');
-const gameCtx      = gameCanvas.getContext('2d');
-const hudCtx       = hudCanvas.getContext('2d');
+const video          = document.getElementById('webcam');
+const webcamCanvas   = document.getElementById('webcam-canvas');
+const gameCanvas     = document.getElementById('game-canvas');
+const hudCanvas      = document.getElementById('hud-canvas');
+const weatherCanvas  = document.getElementById('weather-canvas');
+const webcamCtx      = webcamCanvas.getContext('2d');
+const gameCtx        = gameCanvas.getContext('2d');
+const hudCtx         = hudCanvas.getContext('2d');
 
 function resizeCanvases() {
-  webcamCanvas.width  = window.innerWidth;
-  webcamCanvas.height = window.innerHeight;
-  gameCanvas.width    = window.innerWidth;
-  gameCanvas.height   = window.innerHeight;
-  hudCanvas.width     = window.innerWidth;
-  hudCanvas.height    = window.innerHeight;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  webcamCanvas.width   = w; webcamCanvas.height  = h;
+  gameCanvas.width     = w; gameCanvas.height    = h;
+  hudCanvas.width      = w; hudCanvas.height     = h;
+  weatherCanvas.width  = w; weatherCanvas.height = h;
+  resizeWeatherFx(w, h);
 }
 
 window.addEventListener('resize', resizeCanvases);
@@ -65,6 +69,23 @@ function showGame() {
   fullscreenBtn.classList.remove('hidden');
   document.getElementById('barrel-tip').classList.remove('hidden');
   syncBarrelTip();
+}
+
+function updateWeatherHud() {
+  const hud  = document.getElementById('weather-hud');
+  const data = getWeatherHudData();
+  if (!data) return;
+
+  hud.innerHTML = [
+    `<div class="w-main">`,
+    `<span class="w-icon">${data.icon}</span>`,
+    `<span class="w-temp">${data.temp}</span>`,
+    `<span class="w-label">${data.label}</span>`,
+    `</div>`,
+    data.hint ? `<div class="w-hint">${data.hint}</div>` : '',
+  ].join('');
+
+  hud.classList.remove('hidden');
 }
 
 fullscreenBtn.addEventListener('click', function() {
@@ -218,6 +239,15 @@ async function loadGame() {
 
     clearInterval(statusTimer);
     showGame();
+
+    // Weather is non-blocking — init the canvas loop immediately,
+    // then fetch conditions in the background if geo was granted.
+    initWeatherFx(weatherCanvas);
+    if (_geoCoords) {
+      fetchWeather(_geoCoords.lat, _geoCoords.lon)
+        .then(updateWeatherHud)
+        .catch(function() {}); // silently skip if API unavailable
+    }
   } catch (err) {
     clearInterval(statusTimer);
     console.error('Game load error:', err);
@@ -227,20 +257,28 @@ async function loadGame() {
 // #endregion
 
 // #region Start flow
+let _geoCoords = null; // { lat, lon } or null if denied
+
 startBtn.addEventListener('click', async function() {
   startBtn.disabled    = true;
-  startBtn.textContent = 'Requesting camera…';
+  startBtn.textContent = 'Requesting camera + GPS…';
   startError.classList.add('hidden');
 
-  try {
-    await startWebcam(null);
-  } catch (e) {
+  // Camera is required; geo is optional — run both in parallel
+  const [cameraResult, geoResult] = await Promise.allSettled([
+    startWebcam(null),
+    requestGeolocation(),
+  ]);
+
+  if (cameraResult.status === 'rejected') {
     startBtn.disabled    = false;
-    startBtn.textContent = '▶ ALLOW CAMERA & START';
+    startBtn.textContent = '▶ ALLOW CAMERA + GPS';
     startError.textContent = 'Camera access denied. Please allow access and try again.';
     startError.classList.remove('hidden');
     return;
   }
+
+  _geoCoords = geoResult.status === 'fulfilled' ? geoResult.value : null;
 
   startScreen.classList.add('hidden');
   loadingScreen.classList.remove('hidden');

@@ -19,6 +19,7 @@
   <canvas id="webcam-canvas"></canvas>
   <canvas id="game-canvas"></canvas>
   <canvas id="hud-canvas"></canvas>
+  <canvas id="weather-canvas"></canvas>
 
   <!-- HUD buttons (hidden until game starts) -->
   <button id="cog-btn"        class="hidden" title="Settings">⚙</button>
@@ -37,6 +38,9 @@
   </button>
   <button id="barrel-tip"  class="hidden" title="Shoot"></button>
 
+  <!-- Weather HUD (shown after weather loads) -->
+  <div id="weather-hud" class="hidden"></div>
+
   <!-- iOS "Add to Home Screen" tip -->
   <div id="ios-tip" class="hidden">
     <p>For fullscreen, add this page to your Home Screen:</p>
@@ -53,7 +57,7 @@
       <h1 class="start-title">REAL-LIFE FPS</h1>
       <p class="start-sub">Point your camera at a person and shoot</p>
       <p class="start-hint">Click / hold · Shift+S to shoot · Shift+R to reload</p>
-      <button id="start-btn">▶ ALLOW CAMERA &amp; START</button>
+      <button id="start-btn">▶ ALLOW CAMERA + GPS</button>
       <p id="start-error" class="start-error hidden"></p>
     </div>
   </div>
