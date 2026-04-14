@@ -237,3 +237,54 @@ video { display: none; }
   50% { opacity: 0.3; }
 }
 /* #endregion */
+
+/* #region Landscape overrides (phones in landscape) */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* HUD buttons — stack on the right side instead of top */
+  #cog-btn     { top: 16px;  right: 16px; }
+  #restart-btn { top: 76px;  right: 16px; }
+
+  /* Config panel — shift below stacked buttons, cap height tightly */
+  #config-panel {
+    top: 16px;
+    right: 80px;
+    max-height: calc(100vh - 32px);
+    width: 260px;
+  }
+
+  /* Start / loading screens — go horizontal to fit short viewport */
+  .start-box {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px 20px;
+    width: min(640px, 95vw);
+    max-height: 95vh;
+    overflow-y: auto;
+  }
+
+  .start-title {
+    width: 100%;
+    font-size: clamp(18px, 5vw, 28px);
+  }
+
+  .start-sub,
+  .start-hint {
+    font-size: clamp(11px, 2vw, 14px);
+  }
+
+  #start-btn {
+    padding: 10px 24px;
+    font-size: clamp(13px, 2.5vw, 16px);
+  }
+
+  #loading-screen {
+    gap: 8px;
+  }
+
+  .loading-title {
+    font-size: clamp(14px, 4vw, 20px);
+  }
+}
+/* #endregion */

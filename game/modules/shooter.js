@@ -1,4 +1,5 @@
 import { isCrosshairOnPerson } from './crosshair.js';
+import { getConfig }           from './storage.js';
 
 // #region Input state
 let mouseDown  = false;
@@ -38,11 +39,13 @@ export function initShooter() {
   }
 
   document.addEventListener('keydown', function(e) {
-    if (e.shiftKey && e.key === 'S') shiftSDown = true;
-    if (e.shiftKey && e.key === 'R') reload();
+    const scheme = getConfig('key_scheme', 'shift_sr');
+    if (matchesShoot(e, scheme))  shiftSDown = true;
+    if (matchesReload(e, scheme)) reload();
   });
   document.addEventListener('keyup', function(e) {
-    if (e.key === 'S' || e.key === 'Shift') shiftSDown = false;
+    const scheme = getConfig('key_scheme', 'shift_sr');
+    if (matchesShootRelease(e, scheme)) shiftSDown = false;
   });
 }
 
@@ -95,5 +98,26 @@ function reload() {
 
 function emit(event) {
   for (const cb of listeners[event]) cb();
+}
+
+function matchesShoot(e, scheme) {
+  if (scheme === 'shift_sr') return e.shiftKey && e.key === 'S';
+  if (scheme === 'sr')       return e.key === 's' || e.key === 'S';
+  if (scheme === 'f2f4')     return e.key === 'F2';
+  return false;
+}
+
+function matchesReload(e, scheme) {
+  if (scheme === 'shift_sr') return e.shiftKey && e.key === 'R';
+  if (scheme === 'sr')       return e.key === 'r' || e.key === 'R';
+  if (scheme === 'f2f4')     return e.key === 'F4';
+  return false;
+}
+
+function matchesShootRelease(e, scheme) {
+  if (scheme === 'shift_sr') return e.key === 'S' || e.key === 'Shift';
+  if (scheme === 'sr')       return e.key === 's' || e.key === 'S';
+  if (scheme === 'f2f4')     return e.key === 'F2';
+  return false;
 }
 // #endregion

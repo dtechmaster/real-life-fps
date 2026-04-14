@@ -21,6 +21,7 @@ export function initConfigPanel(onSegmenterReinit) {
   renderCrosshairSection(panel);
   renderAnimationsSection(panel);
   renderDeathMaskSection(panel);
+  renderControlsSection(panel);
   renderMediaPipeSection(panel, onSegmenterReinit);
 }
 
@@ -120,6 +121,21 @@ function renderDeathMaskSection(panel) {
 
   addColorRow(panel, 'Mask color',   'death_mask_color',   '#FF0000');
   addRangeRow(panel, 'Mask opacity', 'death_mask_opacity',  0.6, 0.1, 1.0, 0.05);
+}
+
+function renderControlsSection(panel) {
+  addSeparator(panel);
+
+  const title = document.createElement('div');
+  title.className = 'panel-section-title';
+  title.textContent = 'Controls';
+  panel.appendChild(title);
+
+  addSelectRow(panel, 'Shoot / Reload', 'key_scheme', 'shift_sr', {
+    shift_sr : 'Shift+S / Shift+R',
+    sr       : 'S / R',
+    f2f4     : 'F2 / F4',
+  }, null);
 }
 
 function renderMediaPipeSection(panel, onReinit) {
