@@ -31,7 +31,8 @@ video { display: none; }
 
 /* #region HUD buttons */
 #cog-btn,
-#restart-btn {
+#restart-btn,
+#fullscreen-btn {
   position: fixed;
   z-index: 100;
   background: #1A1A1A;
@@ -49,7 +50,8 @@ video { display: none; }
 #fullscreen-btn  { top: 16px; right: 144px; }
 
 #cog-btn:hover,
-#restart-btn:hover { background: #8C8A6A; color: #111111; }
+#restart-btn:hover,
+#fullscreen-btn:hover { background: #8C8A6A; color: #111111; }
 
 #barrel-tip {
   position: fixed;
