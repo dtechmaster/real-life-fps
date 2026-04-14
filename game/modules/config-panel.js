@@ -148,7 +148,7 @@ function renderMediaPipeSection(panel, onReinit) {
   addSelectRow(panel, 'Delegate', 'mp_delegate', 'GPU',     { GPU: 'GPU', CPU: 'CPU' }, withReinit(function() {}));
 
   // Confidence threshold — for selfie models only, harmless on deeplab
-  addRangeRow(panel, 'Confidence cutoff', 'mp_confidence_threshold', 0.5, 0.0, 1.0, 0.05);
+  addRangeRow(panel, 'Confidence cutoff', 'mp_confidence_threshold', 0.8, 0.0, 1.0, 0.05);
 }
 // #endregion
 

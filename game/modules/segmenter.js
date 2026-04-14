@@ -114,7 +114,7 @@ function normalizeMask(result, modelKey) {
     return [out, result.categoryMask.width, result.categoryMask.height];
   }
 
-  const threshold = getConfig('mp_confidence_threshold', 0.5);
+  const threshold = getConfig('mp_confidence_threshold', 0.8);
   const maskSlot  = result.confidenceMasks[model.defaultPersonIndex] ?? result.confidenceMasks[0];
   const raw       = maskSlot.getAsFloat32Array();
   const out       = new Uint8Array(raw.length);
