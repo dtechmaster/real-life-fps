@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Real-Life FPS">
   <title>Real-Life FPS</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -30,6 +33,13 @@
     </svg>
   </button>
   <button id="barrel-tip"  class="hidden" title="Shoot"></button>
+
+  <!-- iOS "Add to Home Screen" tip -->
+  <div id="ios-tip" class="hidden">
+    <p>For fullscreen, add this page to your Home Screen:</p>
+    <p>Tap <strong>Share</strong> <span class="ios-share-icon">⎙</span> → <strong>Add to Home Screen</strong></p>
+    <button id="ios-tip-close">GOT IT</button>
+  </div>
 
   <!-- Config panel -->
   <div id="config-panel" class="hidden"></div>

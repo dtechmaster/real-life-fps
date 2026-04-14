@@ -39,6 +39,13 @@ const loadingRetry   = document.getElementById('loading-retry');
 const cogBtn          = document.getElementById('cog-btn');
 const restartBtn      = document.getElementById('restart-btn');
 const fullscreenBtn   = document.getElementById('fullscreen-btn');
+const iosTip          = document.getElementById('ios-tip');
+const iosTipClose     = document.getElementById('ios-tip-close');
+
+// True when running as an installed PWA (added to home screen)
+const isStandalone = window.navigator.standalone === true;
+// True on iOS Safari where requestFullscreen is not supported
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
 
 function setLoadingStatus(msg) {
   loadingStatus.textContent = msg;
@@ -61,6 +68,12 @@ function showGame() {
 }
 
 fullscreenBtn.addEventListener('click', function() {
+  if (isIOS) {
+    // iOS Safari doesn't support requestFullscreen — show the home screen tip
+    // unless already running standalone (already fullscreen)
+    if (!isStandalone) iosTip.classList.toggle('hidden');
+    return;
+  }
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch(function() {});
   } else {
@@ -68,9 +81,18 @@ fullscreenBtn.addEventListener('click', function() {
   }
 });
 
+iosTipClose.addEventListener('click', function() {
+  iosTip.classList.add('hidden');
+});
+
 document.addEventListener('fullscreenchange', function() {
   fullscreenBtn.classList.toggle('is-fullscreen', !!document.fullscreenElement);
 });
+
+// Hide the fullscreen button if already running standalone on iOS
+if (isIOS && isStandalone) {
+  fullscreenBtn.classList.add('hidden');
+}
 // #endregion
 
 // #region Webcam
