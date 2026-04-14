@@ -36,8 +36,9 @@ const startError     = document.getElementById('start-error');
 const loadingStatus  = document.getElementById('loading-status');
 const loadingError   = document.getElementById('loading-error');
 const loadingRetry   = document.getElementById('loading-retry');
-const cogBtn         = document.getElementById('cog-btn');
-const restartBtn     = document.getElementById('restart-btn');
+const cogBtn          = document.getElementById('cog-btn');
+const restartBtn      = document.getElementById('restart-btn');
+const fullscreenBtn   = document.getElementById('fullscreen-btn');
 
 function setLoadingStatus(msg) {
   loadingStatus.textContent = msg;
@@ -54,9 +55,24 @@ function showGame() {
   loadingScreen.classList.add('hidden');
   cogBtn.classList.remove('hidden');
   restartBtn.classList.remove('hidden');
+  fullscreenBtn.classList.remove('hidden');
   document.getElementById('barrel-tip').classList.remove('hidden');
   syncBarrelTip();
 }
+
+function updateFullscreenIcon() {
+  fullscreenBtn.textContent = document.fullscreenElement ? '✕' : '⛶';
+}
+
+fullscreenBtn.addEventListener('click', function() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(function() {});
+  } else {
+    document.exitFullscreen().catch(function() {});
+  }
+});
+
+document.addEventListener('fullscreenchange', updateFullscreenIcon);
 // #endregion
 
 // #region Webcam

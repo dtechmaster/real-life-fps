@@ -44,8 +44,9 @@ video { display: none; }
   touch-action: manipulation;
 }
 
-#cog-btn     { top: 16px; right: 16px; }
-#restart-btn { top: 16px; right: 80px; }
+#cog-btn         { top: 16px; right: 16px; }
+#restart-btn     { top: 16px; right: 80px; }
+#fullscreen-btn  { top: 16px; right: 144px; }
 
 #cog-btn:hover,
 #restart-btn:hover { background: #8C8A6A; color: #111111; }
@@ -241,8 +242,9 @@ video { display: none; }
 /* #region Landscape overrides (phones in landscape) */
 @media (orientation: landscape) and (max-height: 500px) {
   /* HUD buttons — stack on the right side instead of top */
-  #cog-btn     { top: 16px;  right: 16px; }
-  #restart-btn { top: 76px;  right: 16px; }
+  #cog-btn        { top: 16px;   right: 16px; }
+  #restart-btn    { top: 76px;   right: 16px; }
+  #fullscreen-btn { top: 140px;  right: 16px; }
 
   /* Config panel — shift below stacked buttons, cap height tightly */
   #config-panel {
