@@ -64,12 +64,25 @@ async function startWebcam(deviceId) {
   if (video.srcObject) {
     video.srcObject.getTracks().forEach(function(t) { t.stop(); });
   }
-  const constraints = {
-    video: deviceId
-      ? { deviceId: { exact: deviceId } }
-      : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
-  };
-  const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+  let stream;
+  if (deviceId) {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+  } else {
+    // Prefer back camera; fall back to any camera if unavailable
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+    } catch (_) {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+    }
+  }
+
   video.srcObject = stream;
   await video.play();
   _currentDeviceId = stream.getVideoTracks()[0]?.getSettings()?.deviceId ?? null;
