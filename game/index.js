@@ -60,10 +60,6 @@ function showGame() {
   syncBarrelTip();
 }
 
-function updateFullscreenIcon() {
-  fullscreenBtn.textContent = document.fullscreenElement ? '✕' : '⛶';
-}
-
 fullscreenBtn.addEventListener('click', function() {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch(function() {});
@@ -72,7 +68,9 @@ fullscreenBtn.addEventListener('click', function() {
   }
 });
 
-document.addEventListener('fullscreenchange', updateFullscreenIcon);
+document.addEventListener('fullscreenchange', function() {
+  fullscreenBtn.classList.toggle('is-fullscreen', !!document.fullscreenElement);
+});
 // #endregion
 
 // #region Webcam

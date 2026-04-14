@@ -53,6 +53,10 @@ video { display: none; }
 #restart-btn:hover,
 #fullscreen-btn:hover { background: #8C8A6A; color: #111111; }
 
+#fullscreen-btn .fs-exit  { display: none; }
+#fullscreen-btn.is-fullscreen .fs-enter { display: none; }
+#fullscreen-btn.is-fullscreen .fs-exit  { display: block; }
+
 #barrel-tip {
   position: fixed;
   z-index: 150;
