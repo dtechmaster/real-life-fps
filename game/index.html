@@ -2,23 +2,41 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Real-Life FPS</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <video id="webcam" autoplay playsinline></video>
+  <video id="webcam" autoplay playsinline muted webkit-playsinline></video>
 
-  <!-- Canvas stack — all absolutely positioned, same size -->
+  <!-- Canvas stack -->
   <canvas id="webcam-canvas"></canvas>
   <canvas id="game-canvas"></canvas>
   <canvas id="hud-canvas"></canvas>
 
-  <!-- Config cog button -->
-  <button id="cog-btn" title="Settings">⚙</button>
+  <!-- HUD buttons (hidden until game starts) -->
+  <button id="cog-btn"     class="hidden" title="Settings">⚙</button>
+  <button id="restart-btn" class="hidden" title="Restart">↺</button>
 
-  <!-- Config panel (hidden by default) -->
+  <!-- Config panel -->
   <div id="config-panel" class="hidden"></div>
+
+  <!-- Start screen -->
+  <div id="start-screen">
+    <div class="start-box">
+      <h1 class="start-title">REAL-LIFE FPS</h1>
+      <p class="start-sub">Point your camera at a person and shoot</p>
+      <p class="start-hint">Click / hold · Shift+S to shoot · Shift+R to reload</p>
+      <button id="start-btn">▶ ALLOW CAMERA &amp; START</button>
+      <p id="start-error" class="start-error hidden"></p>
+    </div>
+  </div>
+
+  <!-- Loading screen -->
+  <div id="loading-screen" class="hidden">
+    <p class="loading-title">LOADING AI MODEL</p>
+    <p class="loading-sub">This may take a moment on first load…</p>
+  </div>
 
   <script type="module" src="index.js"></script>
 </body>

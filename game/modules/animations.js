@@ -46,6 +46,14 @@ function stopBurst() {
 // #endregion
 
 // #region Init
+export function resetAnimations() {
+  health     = 100;
+  flashAlpha = 0;
+  score      = 0;
+  _wasDead   = false;
+  if (_gameCanvas) _gameCanvas.style.transform = '';
+}
+
 export function initAnimations(gameCanvas) {
   _gameCanvas = gameCanvas;
 

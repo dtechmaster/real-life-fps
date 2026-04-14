@@ -2,6 +2,8 @@ import { getConfig, setConfig } from './storage.js';
 import { MODELS }               from './segmenter.js';
 
 // #region Config panel bootstrap
+let _cameraSelect = null;
+
 /**
  * @param {() => Promise<void>} onSegmenterReinit - called when model/delegate changes
  */
@@ -13,11 +15,52 @@ export function initConfigPanel(onSegmenterReinit) {
     panel.classList.toggle('hidden');
   });
 
+  renderCameraSection(panel);
   renderSilhouetteSection(panel);
   renderCrosshairSection(panel);
   renderAnimationsSection(panel);
   renderDeathMaskSection(panel);
   renderMediaPipeSection(panel, onSegmenterReinit);
+}
+
+function renderCameraSection(panel) {
+  const title = document.createElement('div');
+  title.className = 'panel-section-title';
+  title.textContent = 'Camera';
+  panel.appendChild(title);
+
+  const row = makeRow('Device');
+  _cameraSelect = document.createElement('select');
+  _cameraSelect.style.cssText = 'background:#1A1A1A;color:#77776B;border:1px solid #5F624F;font-family:inherit;font-size:14px;padding:4px;flex:1;';
+  _cameraSelect.disabled = true;
+  const placeholder = document.createElement('option');
+  placeholder.textContent = 'Waiting for permission…';
+  _cameraSelect.appendChild(placeholder);
+  row.appendChild(_cameraSelect);
+  panel.appendChild(row);
+}
+
+/**
+ * Populates the camera selector after permission is granted.
+ * @param {MediaDeviceInfo[]} devices
+ * @param {string|null}       currentDeviceId
+ * @param {(id:string)=>void} onChange
+ */
+export function populateCameras(devices, currentDeviceId, onChange) {
+  if (!_cameraSelect) return;
+  _cameraSelect.innerHTML = '';
+  _cameraSelect.disabled  = false;
+  _cameraSelect.style.color = '#E7DFAF';
+  devices.forEach(function(device, i) {
+    const opt = document.createElement('option');
+    opt.value       = device.deviceId;
+    opt.textContent = device.label || `Camera ${i + 1}`;
+    _cameraSelect.appendChild(opt);
+  });
+  if (currentDeviceId) _cameraSelect.value = currentDeviceId;
+  _cameraSelect.addEventListener('change', function() {
+    onChange(_cameraSelect.value);
+  });
 }
 
 function renderSilhouetteSection(panel) {

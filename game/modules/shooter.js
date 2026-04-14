@@ -28,6 +28,15 @@ export function initShooter() {
     if (e.button === 0) mouseDown = false;
   });
 
+  // Touch: treat any touch on the canvas as the fire button
+  document.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    mouseDown = true;
+  }, { passive: false });
+  document.addEventListener('touchend', function() {
+    mouseDown = false;
+  });
+
   document.addEventListener('keydown', function(e) {
     if (e.shiftKey && e.key === 'S') shiftSDown = true;
     if (e.shiftKey && e.key === 'R') reload();
@@ -35,6 +44,14 @@ export function initShooter() {
   document.addEventListener('keyup', function(e) {
     if (e.key === 'S' || e.key === 'Shift') shiftSDown = false;
   });
+}
+
+export function resetShooter() {
+  mouseDown  = false;
+  shiftSDown = false;
+  wasFiring  = false;
+  ammo       = MAX_AMMO;
+  lastShotTime = 0;
 }
 
 /**

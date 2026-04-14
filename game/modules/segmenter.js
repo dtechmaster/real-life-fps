@@ -28,10 +28,14 @@ export const MODELS = {
 // #region Segmenter state
 let segmenter  = null;
 let vision     = null;
-let lastTime   = -1;
+let lastTime   = -Infinity;
 let _onMask    = null;
 let _videoEl   = null;
 let _reiniting = false;
+let _loopStarted = false;
+
+// Minimum ms between segmentation calls — keeps iOS from flooding the GPU
+const MIN_INTERVAL_MS = 33; // ~30fps
 // #endregion
 
 // #region Init & reinit
@@ -42,25 +46,26 @@ export async function initSegmenter(videoEl, onMask) {
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.2/wasm"
   );
   await buildSegmenter();
-  if (videoEl.readyState >= 2) {
+
+  if (!_loopStarted) {
+    _loopStarted = true;
     tick(videoEl);
-  } else {
-    videoEl.addEventListener('loadeddata', function() { tick(videoEl); });
   }
 }
 
-/** Call when model or delegate changes — rebuilds the segmenter in-place. */
+/** Rebuilds the segmenter in-place (model/delegate change). */
 export async function reinitSegmenter() {
+  if (!vision) return; // not yet initialized
   _reiniting = true;
-  lastTime   = -1;
+  lastTime   = -Infinity;
   await buildSegmenter();
   _reiniting = false;
 }
 
 async function buildSegmenter() {
   if (segmenter) { segmenter.close(); segmenter = null; }
-  const modelKey     = getConfig('mp_model', 'selfie_landscape');
-  const model        = MODELS[modelKey] ?? MODELS.deeplab;
+  const modelKey     = getConfig('mp_model',    'selfie_landscape');
+  const model        = MODELS[modelKey] ?? MODELS.selfie_landscape;
   const delegate     = getConfig('mp_delegate', 'GPU');
   const isConfidence = model.maskType === 'confidence';
   segmenter = await ImageSegmenter.createFromOptions(vision, {
@@ -74,29 +79,34 @@ async function buildSegmenter() {
 
 // #region Game loop
 function tick(videoEl) {
-  if (!_reiniting) {
-    const now = performance.now();
-    if (videoEl.currentTime !== lastTime) {
-      lastTime = videoEl.currentTime;
-      const modelKey = getConfig('mp_model', 'deeplab');
-      segmenter.segmentForVideo(videoEl, now, function(result) {
+  requestAnimationFrame(function() { tick(videoEl); });
+
+  if (_reiniting || !segmenter) return;
+
+  // Use time-based throttle instead of currentTime check — more reliable on iOS
+  const now = performance.now();
+  if (now - lastTime < MIN_INTERVAL_MS) return;
+
+  // Video must have data and real dimensions before segmenting
+  if (videoEl.readyState < 2 || !videoEl.videoWidth || !videoEl.videoHeight) return;
+
+  lastTime = now;
+
+  try {
+    const modelKey = getConfig('mp_model', 'selfie_landscape');
+    segmenter.segmentForVideo(videoEl, now, function(result) {
+      try {
         const [mask, w, h] = normalizeMask(result, modelKey);
         if (_onMask) _onMask(mask, w, h);
-      });
-    }
-  }
-  requestAnimationFrame(function() { tick(videoEl); });
+      } catch(e) { /* ignore result errors during model switch */ }
+    });
+  } catch(e) { /* ignore call errors during model switch */ }
 }
 
-/**
- * Converts any model output into a flat binary Uint8Array (1 = person, 0 = background).
- * Downstream modules only ever check === 1.
- */
 function normalizeMask(result, modelKey) {
-  const model = MODELS[modelKey] ?? MODELS.deeplab;
+  const model = MODELS[modelKey] ?? MODELS.selfie_landscape;
 
   if (model.maskType === 'category') {
-    // Person index is fixed per model — never read from config to avoid inversion bugs
     const personIdx = model.defaultPersonIndex;
     const raw  = result.categoryMask.getAsUint8Array();
     const out  = new Uint8Array(raw.length);
@@ -104,11 +114,10 @@ function normalizeMask(result, modelKey) {
     return [out, result.categoryMask.width, result.categoryMask.height];
   }
 
-  // confidence mask
-  const threshold   = getConfig('mp_confidence_threshold', 0.5);
-  const maskSlot    = result.confidenceMasks[model.defaultPersonIndex] ?? result.confidenceMasks[0];
-  const raw         = maskSlot.getAsFloat32Array();
-  const out         = new Uint8Array(raw.length);
+  const threshold = getConfig('mp_confidence_threshold', 0.5);
+  const maskSlot  = result.confidenceMasks[model.defaultPersonIndex] ?? result.confidenceMasks[0];
+  const raw       = maskSlot.getAsFloat32Array();
+  const out       = new Uint8Array(raw.length);
   for (let i = 0; i < raw.length; i++) out[i] = raw[i] >= threshold ? 1 : 0;
   return [out, maskSlot.width, maskSlot.height];
 }
