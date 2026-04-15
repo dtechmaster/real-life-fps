@@ -1,4 +1,4 @@
-import { getWeather } from './weather.js';
+import { getWeather, getCity } from './weather.js';
 
 // #region Canvas state
 let _canvas  = null;
@@ -18,7 +18,7 @@ let _lastH        = 0;
 // #endregion
 
 // #region Rain drop state
-const MAX_DROPS = 50;
+const MAX_DROPS = 90;
 let _drops = [];
 // #endregion
 
@@ -208,11 +208,11 @@ function _applyWipe() {
 function _spawnDrop() {
   _drops.push({
     x      : Math.random() * _w,
-    y      : Math.random() * _h * 0.6,
-    size   : 5 + Math.random() * 16,
-    speedY : 0.3 + Math.random() * 0.7,
-    drift  : (Math.random() - 0.5) * 0.25,
-    opacity: 0.5 + Math.random() * 0.4,
+    y      : Math.random() * _h * 0.55,
+    size   : 7 + Math.random() * 20,
+    speedY : 0.35 + Math.random() * 0.9,
+    drift  : (Math.random() - 0.5) * 0.3,
+    opacity: 0.55 + Math.random() * 0.4,
     life   : 1.0,
   });
 }
@@ -221,7 +221,7 @@ function _tickDrops() {
   const weather   = getWeather();
   const intensity = weather?.isStorm ? 3 : weather?.isRaining ? 1 : 0;
 
-  if (intensity > 0 && _drops.length < MAX_DROPS && Math.random() < 0.05 * intensity) {
+  if (intensity > 0 && _drops.length < MAX_DROPS && Math.random() < 0.1 * intensity) {
     _spawnDrop();
   }
 
@@ -229,7 +229,7 @@ function _tickDrops() {
     const d = _drops[i];
     d.y    += d.speedY;
     d.x    += d.drift;
-    if (d.y > _h * 0.72) d.life -= 0.007;
+    if (d.y > _h * 0.68) d.life -= 0.008;
     if (d.life <= 0 || d.y > _h + 20) _drops.splice(i, 1);
   }
 }
@@ -237,27 +237,39 @@ function _tickDrops() {
 function _drawDrops() {
   for (const d of _drops) {
     _ctx.save();
-    _ctx.globalAlpha = d.opacity * d.life;
 
+    // Sliding streak above the drop — thin trail showing where it came from
+    const trailLen = d.size * (2.5 + d.speedY * 3);
+    _ctx.globalAlpha = d.opacity * d.life * 0.35;
+    _ctx.strokeStyle = 'rgba(180, 225, 255, 0.9)';
+    _ctx.lineWidth   = Math.max(1, d.size * 0.22);
+    _ctx.lineCap     = 'round';
+    _ctx.beginPath();
+    _ctx.moveTo(d.x - d.drift * 8, d.y - trailLen);
+    _ctx.lineTo(d.x,                d.y - d.size * 0.4);
+    _ctx.stroke();
+
+    // Drop body — radial gradient for a glassy lens-drop look
+    _ctx.globalAlpha = d.opacity * d.life;
     const grad = _ctx.createRadialGradient(
       d.x - d.size * 0.25, d.y - d.size * 0.3, 0,
       d.x,                  d.y,                d.size
     );
     grad.addColorStop(0,   'rgba(255, 255, 255, 0.95)');
-    grad.addColorStop(0.4, 'rgba(160, 210, 255, 0.35)');
-    grad.addColorStop(1,   'rgba(10, 60, 120, 0.2)');
+    grad.addColorStop(0.4, 'rgba(160, 215, 255, 0.45)');
+    grad.addColorStop(1,   'rgba(10,  60,  130, 0.18)');
 
     _ctx.fillStyle = grad;
     _ctx.beginPath();
-    _ctx.ellipse(d.x, d.y, d.size * 0.6, d.size, 0, 0, Math.PI * 2);
+    _ctx.ellipse(d.x, d.y, d.size * 0.58, d.size, 0, 0, Math.PI * 2);
     _ctx.fill();
 
-    // Highlight streak
-    _ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    // Inner specular highlight
+    _ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
     _ctx.lineWidth   = 1;
     _ctx.beginPath();
-    _ctx.moveTo(d.x - d.size * 0.2, d.y - d.size * 0.5);
-    _ctx.lineTo(d.x - d.size * 0.3, d.y + d.size * 0.1);
+    _ctx.moveTo(d.x - d.size * 0.22, d.y - d.size * 0.5);
+    _ctx.lineTo(d.x - d.size * 0.32, d.y + d.size * 0.12);
     _ctx.stroke();
 
     _ctx.restore();
@@ -354,7 +366,7 @@ export function getWeatherHudData() {
 
   const hint  = (w.isFreezing || w.isCold) ? 'SWIPE TO DEFROST' : null;
 
-  return { icon, temp, label, hint };
+  return { icon, temp, label, hint, city: getCity() };
 }
 // #endregion
 

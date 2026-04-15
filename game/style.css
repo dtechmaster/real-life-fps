@@ -49,6 +49,7 @@ video { display: none; }
   font-family: 'Share Tech Mono', 'Courier New', monospace;
 }
 
+.w-city  { color: #D0FFEE; font-size: 13px; letter-spacing: 3px; font-family: 'Share Tech Mono', 'Courier New', monospace; }
 .w-icon  { font-size: 18px; line-height: 1; }
 .w-temp  { color: #D0FFEE; font-size: 15px; letter-spacing: 1px; }
 .w-label { color: #2A7060; font-size: 11px; letter-spacing: 3px; }

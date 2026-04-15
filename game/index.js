@@ -5,7 +5,7 @@ import { initShooter, tickShooter, isFiring, resetShooter }   from './modules/sh
 import { initAnimations, tickAnimations, resetAnimations }    from './modules/animations.js';
 import { initConfigPanel, populateCameras }                   from './modules/config-panel.js';
 import { syncBarrelTip }                                      from './modules/animations.js';
-import { requestGeolocation, fetchWeather }                   from './modules/weather.js';
+import { requestGeolocation, fetchWeather, fetchCity }         from './modules/weather.js';
 import { initWeatherFx, resizeWeatherFx, getWeatherHudData }  from './modules/weather-fx.js';
 
 // #region Canvas setup
@@ -82,6 +82,7 @@ function updateWeatherHud() {
   }
 
   hud.innerHTML = [
+    data.city ? `<div class="w-city">${data.city.toUpperCase()}</div>` : '',
     `<div class="w-main">`,
     `<span class="w-icon">${data.icon}</span>`,
     `<span class="w-temp">${data.temp}</span>`,
@@ -249,8 +250,12 @@ async function loadGame() {
     // then fetch conditions in the background if geo was granted.
     initWeatherFx(weatherCanvas);
     if (_geoCoords) {
-      fetchWeather(_geoCoords.lat, _geoCoords.lon)
-        .then(updateWeatherHud)
+      // Fetch weather + city name in parallel; update HUD when both settle
+      Promise.all([
+        fetchWeather(_geoCoords.lat, _geoCoords.lon),
+        fetchCity(_geoCoords.lat, _geoCoords.lon),
+      ])
+        .then(function() { updateWeatherHud(); })
         .catch(function(err) {
           console.warn('[Weather] fetch failed:', err);
           updateWeatherHud(); // shows "GPS UNAVAILABLE" fallback

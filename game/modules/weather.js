@@ -84,3 +84,27 @@ export async function fetchWeather(lat, lon) {
 /** Returns cached weather state, or null if not yet fetched. */
 export function getWeather() { return _state; }
 // #endregion
+
+// #region Reverse geocoding
+let _cityName = null;
+
+/**
+ * Resolves the nearest city name for the given coords via Nominatim.
+ * Sets _cityName on success; silently ignores errors.
+ */
+export async function fetchCity(lat, lon) {
+  try {
+    const url  = `https://nominatim.openstreetmap.org/reverse?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&format=json`;
+    const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+    _cityName  = data.address?.city
+              ?? data.address?.town
+              ?? data.address?.village
+              ?? data.address?.county
+              ?? null;
+  } catch (_) {}
+  return _cityName;
+}
+
+export function getCity() { return _cityName; }
+// #endregion
