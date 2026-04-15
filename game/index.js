@@ -5,7 +5,7 @@ import { initShooter, tickShooter, isFiring, resetShooter }   from './modules/sh
 import { initAnimations, tickAnimations, resetAnimations }    from './modules/animations.js';
 import { initConfigPanel, populateCameras }                   from './modules/config-panel.js';
 import { syncBarrelTip }                                      from './modules/animations.js';
-import { requestGeolocation, fetchWeather, fetchCity }         from './modules/weather.js';
+import { requestGeolocation, fetchWeather, fetchCity, setWeatherSim } from './modules/weather.js';
 import { initWeatherFx, resizeWeatherFx, getWeatherHudData }  from './modules/weather-fx.js';
 
 // #region Canvas setup
@@ -223,9 +223,15 @@ async function loadGame() {
     // Wire up modules once
     if (!_modulesInited) {
       _modulesInited = true;
-      initConfigPanel(async function() {
-        if (video.srcObject) await reinitSegmenter();
-      });
+      initConfigPanel(
+        async function() {
+          if (video.srcObject) await reinitSegmenter();
+        },
+        function(condition) {
+          setWeatherSim(condition);
+          updateWeatherHud();
+        }
+      );
       initCrosshair();
       initShooter();
       initAnimations(gameCanvas);

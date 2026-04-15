@@ -82,7 +82,32 @@ export async function fetchWeather(lat, lon) {
 }
 
 /** Returns cached weather state, or null if not yet fetched. */
-export function getWeather() { return _state; }
+export function getWeather() { return _simState ?? _state; }
+// #endregion
+
+// #region Weather simulation (session-only — never persisted)
+let _simState = null;
+
+const SIM_PRESETS = {
+  clear    : { temp: 22, precip: 0,  condition: 'clear',  isFreezing: false, isCold: false, isRaining: false, isSnowing: false, isStorm: false, isHot: false },
+  cloudy   : { temp: 16, precip: 0,  condition: 'cloudy', isFreezing: false, isCold: false, isRaining: false, isSnowing: false, isStorm: false, isHot: false },
+  fog      : { temp: 12, precip: 0,  condition: 'fog',    isFreezing: false, isCold: false, isRaining: false, isSnowing: false, isStorm: false, isHot: false },
+  rain     : { temp: 14, precip: 4,  condition: 'rain',   isFreezing: false, isCold: false, isRaining: true,  isSnowing: false, isStorm: false, isHot: false },
+  storm    : { temp: 11, precip: 25, condition: 'storm',  isFreezing: false, isCold: false, isRaining: true,  isSnowing: false, isStorm: true,  isHot: false },
+  snow     : { temp: -2, precip: 8,  condition: 'snow',   isFreezing: true,  isCold: false, isRaining: false, isSnowing: true,  isStorm: false, isHot: false },
+  cold     : { temp: 4,  precip: 0,  condition: 'cloudy', isFreezing: false, isCold: true,  isRaining: false, isSnowing: false, isStorm: false, isHot: false },
+  freezing : { temp: -6, precip: 0,  condition: 'clear',  isFreezing: true,  isCold: false, isRaining: false, isSnowing: false, isStorm: false, isHot: false },
+  hot      : { temp: 40, precip: 0,  condition: 'clear',  isFreezing: false, isCold: false, isRaining: false, isSnowing: false, isStorm: false, isHot: true  },
+};
+
+/**
+ * Overrides the active weather with a simulation preset.
+ * Pass null to revert to real GPS weather.
+ * Not persisted — discarded when the tab closes.
+ */
+export function setWeatherSim(condition) {
+  _simState = condition ? (SIM_PRESETS[condition] ?? null) : null;
+}
 // #endregion
 
 // #region Reverse geocoding

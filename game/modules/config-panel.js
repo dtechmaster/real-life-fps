@@ -8,9 +8,10 @@ let _cameraSelect = null;
 const _controls = [];
 
 /**
- * @param {() => Promise<void>} onSegmenterReinit - called when model/delegate changes
+ * @param {() => Promise<void>}   onSegmenterReinit  - called when model/delegate changes
+ * @param {(condition:string|null) => void} onWeatherSim - called when sim condition changes
  */
-export function initConfigPanel(onSegmenterReinit) {
+export function initConfigPanel(onSegmenterReinit, onWeatherSim) {
   const btn   = document.getElementById('cog-btn');
   const panel = document.getElementById('config-panel');
 
@@ -24,6 +25,7 @@ export function initConfigPanel(onSegmenterReinit) {
   renderAnimationsSection(panel);
   renderDeathMaskSection(panel);
   renderControlsSection(panel);
+  renderWeatherSimSection(panel, onWeatherSim);
   renderMediaPipeSection(panel, onSegmenterReinit);
   renderResetSection(panel);
 }
@@ -171,6 +173,63 @@ function renderMediaPipeSection(panel, onReinit) {
 
   // Confidence threshold — for selfie models only, harmless on deeplab
   addRangeRow(panel, 'Confidence cutoff', 'mp_confidence_threshold', 0.8, 0.0, 1.0, 0.05);
+}
+// #endregion
+
+// #region Weather simulation
+function renderWeatherSimSection(panel, onSimChange) {
+  addSeparator(panel);
+
+  const title = document.createElement('div');
+  title.className   = 'panel-section-title';
+  title.textContent = 'Weather Sim';
+  panel.appendChild(title);
+
+  const note = document.createElement('div');
+  note.style.cssText = 'font-size:10px; color:#245040; letter-spacing:1px; padding-bottom:4px;';
+  note.textContent   = 'Session only — not saved to storage';
+  panel.appendChild(note);
+
+  const OPTIONS = {
+    off      : '— Real GPS weather',
+    clear    : '☀  Clear',
+    cloudy   : '☁  Cloudy',
+    fog      : '〰  Fog',
+    rain     : '⬧  Rain',
+    storm    : '⛈  Storm',
+    snow     : '❄  Snow',
+    cold     : '🌡  Cold  (+1–6°C, frost)',
+    freezing : '🧊  Freezing  (≤0°C, frost)',
+    hot      : '🔥  Hot  (≥36°C, shimmer)',
+  };
+
+  const row    = makeRow('Condition');
+  const select = document.createElement('select');
+  select.style.cssText = [
+    'background:#000810',
+    'color:#D0FFEE',
+    'border:1px solid rgba(0,255,204,0.3)',
+    'font-family:inherit',
+    'font-size:11px',
+    'padding:2px 4px',
+    'flex:1',
+  ].join(';');
+
+  for (const [value, text] of Object.entries(OPTIONS)) {
+    const opt       = document.createElement('option');
+    opt.value       = value;
+    opt.textContent = text;
+    select.appendChild(opt);
+  }
+
+  select.value = 'off';
+  select.addEventListener('change', function() {
+    if (onSimChange) onSimChange(select.value === 'off' ? null : select.value);
+  });
+
+  row.appendChild(select);
+  panel.appendChild(row);
+  // Intentionally NOT pushed to _controls — session-only, excluded from reset
 }
 // #endregion
 
