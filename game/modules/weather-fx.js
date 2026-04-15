@@ -207,21 +207,15 @@ function _applyWipe() {
 }
 // #endregion
 
-// #region Rain drops — realistic window-condensation style
+// #region Rain drops — CSS window-condensation style (Lucas Bebber)
 //
-// Why previous attempts looked "cartoon":
-//   High magnification (7-11×) on medium drops (rx 5-18px) means the source
-//   sample is < 2px of the camera canvas — essentially 1 colour — so every
-//   drop renders as a flat coloured blob.  The fix is low magnification (2-3×)
-//   so each drop shows a readable, inverted, slightly-zoomed region of the
-//   scene with visible colour variation.
-//
-// Visual recipe (mirrors the CodePen):
-//   • Static condensation drops — land and stay, slide in the last 25 % of life
-//   • Interior: 2-3× magnified + 180°-inverted camera sample (scale -1,-1)
-//   • Exterior: one dark ring, nothing else — no gradients, no highlights
+// Visual recipe (matches css-raindrops-on-a-window prototype):
+//   • Static condensation drops — land and stay, no sliding
+//   • Interior: 180°-inverted wide-angle scene sample (bg-size: 1000% equivalent)
+//     Each drop shows ~10% of the canvas width (compressed, not magnified)
+//   • Exterior: thin dark ring at 60% opacity — no gradients, no highlights
 //   • Spring pop-in: scale 2.5 → 1, cubic-bezier(0.175, 0.885, 0.32, 1.275)
-//   • Canvas-level filter: blur(0.4px) brightness(1.1) while raining
+//   • No canvas-level filter
 
 function _easeOutBack(t) {
   // Matches cubic-bezier(0.175, 0.885, 0.32, 1.275) — slight overshoot then settle
@@ -230,17 +224,15 @@ function _easeOutBack(t) {
 }
 
 function _spawnDrop() {
-  const rx = 8  + Math.random() * 12;          // 8–20 px radius (readable source sample)
-  const ry = rx * (1.07 + Math.random() * 0.18); // slight vertical elongation
+  const rx = 3  + Math.random() * 7;             // 3–10 px radius (matches CSS 6–20px width)
+  const ry = rx * (1.1 + Math.random() * 0.2);   // slight vertical elongation
   _drops.push({
     x      : rx + Math.random() * (_w - rx * 2),
-    y      : ry + Math.random() * (_h * 0.88 - ry),
+    y      : ry + Math.random() * (_h * 0.92 - ry),
     rx,
     ry,
     born   : performance.now(),
-    maxLife: 10000 + Math.random() * 12000,     // 10–22 s
-    mag    : 2.0 + Math.random() * 1.5,         // 2–3.5× — keeps source ≥ 9 px wide
-    slideY : 0,
+    maxLife: 15000 + Math.random() * 15000,       // 15–30 s
   });
 }
 
@@ -248,13 +240,13 @@ function _tickDrops() {
   const weather   = getWeather();
   const intensity = weather?.isStorm ? 3 : weather?.isRaining ? 1 : 0;
 
-  const wantFilter = intensity > 0;
-  if (wantFilter !== _rainFilter) {
-    _rainFilter          = wantFilter;
-    _canvas.style.filter = wantFilter ? 'blur(0.4px) brightness(1.1)' : '';
+  // Clear any leftover canvas filter
+  if (_rainFilter !== (intensity > 0)) {
+    _rainFilter          = intensity > 0;
+    _canvas.style.filter = '';
   }
 
-  if (intensity > 0 && _drops.length < MAX_DROPS && Math.random() < 0.08 * intensity) {
+  if (intensity > 0 && _drops.length < MAX_DROPS && Math.random() < 0.06 * intensity) {
     _spawnDrop();
   }
 
@@ -263,8 +255,7 @@ function _tickDrops() {
   for (let i = _drops.length - 1; i >= 0; i--) {
     const d = _drops[i];
     const t = (now - d.born) / d.maxLife;
-    if (t > 0.75) d.slideY += 0.1 + ((t - 0.75) / 0.25) * 0.55;
-    if (t >= 1 || d.y + d.slideY > _h + 30) _drops.splice(i, 1);
+    if (t >= 1) _drops.splice(i, 1);
   }
 }
 
@@ -272,53 +263,53 @@ function _drawDrops() {
   if (!_drops.length) return;
   const now = performance.now();
 
+  // Wide-angle source region — matches CSS background-size: 1000%
+  // Each drop shows ~10% of the canvas (compressed + inverted = realistic lens)
+  const sw = _w / 10;
+  const sh = _h / 10;
+
   for (const d of _drops) {
     const t       = (now - d.born) / d.maxLife;
-    const cy      = d.y + d.slideY;
-    const opacity = t < 0.05 ? t / 0.05 : t > 0.80 ? (1 - t) / 0.20 : 1;
+    const opacity = t < 0.05 ? t / 0.05 : t > 0.85 ? (1 - t) / 0.15 : 1;
     if (opacity < 0.01) continue;
 
-    // Spring pop-in: 2.5 → 1 over 180 ms
-    const popT  = Math.min(1, (now - d.born) / 180);
+    // Spring pop-in: 2.5 → 1 over 100 ms (matches CSS animation duration)
+    const popT  = Math.min(1, (now - d.born) / 100);
     const popSc = popT < 1 ? 2.5 - 1.5 * _easeOutBack(popT) : 1;
 
     _ctx.save();
     _ctx.globalAlpha = opacity;
     if (popSc !== 1) {
-      _ctx.translate(d.x, cy);
+      _ctx.translate(d.x, d.y);
       _ctx.scale(popSc, popSc);
-      _ctx.translate(-d.x, -cy);
+      _ctx.translate(-d.x, -d.y);
     }
 
-    // ── Interior: clip + 180°-inverted magnified camera ─────────────────
+    // ── Interior: clip + 180°-inverted wide-angle scene sample ──────────
     _ctx.save();
     _ctx.beginPath();
-    _ctx.ellipse(d.x, cy, d.rx, d.ry, 0, 0, Math.PI * 2);
+    _ctx.ellipse(d.x, d.y, d.rx, d.ry, 0, 0, Math.PI * 2);
     _ctx.clip();
 
     if (_bgCanvas) {
-      // Source sample: rx*2/mag wide — at mag=2.5 and rx=12 that's ~9.6 px,
-      // enough pixels to show colour variation (not a single-colour blob).
-      const sw = (d.rx * 2) / d.mag;
-      const sh = (d.ry * 2) / d.mag;
       _ctx.save();
-      _ctx.translate(d.x, cy);
-      _ctx.scale(-1, -1);        // full 180° inversion — both axes
-      _ctx.translate(-d.x, -cy);
+      _ctx.translate(d.x, d.y);
+      _ctx.scale(-1, -1);        // 180° inversion (lens refraction)
+      _ctx.translate(-d.x, -d.y);
       _ctx.drawImage(_bgCanvas,
-        d.x - sw / 2, cy - sh / 2, sw, sh,
-        d.x - d.rx,   cy - d.ry,   d.rx * 2, d.ry * 2
+        d.x - sw / 2, d.y - sh / 2, sw, sh,
+        d.x - d.rx,   d.y - d.ry,   d.rx * 2, d.ry * 2
       );
       _ctx.restore();
     }
 
-    _ctx.restore(); // pop clip — no brightness wash, no gradients, nothing else
+    _ctx.restore(); // pop clip
 
-    // ── Dark ring only — equivalent to the CodePen .border box-shadow ───
-    _ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
-    _ctx.lineWidth   = Math.max(1.2, Math.min(d.rx, d.ry) * 0.26);
+    // ── Thin dark ring — equivalent to CSS box-shadow: 0 0 0 1-2px rgba(0,0,0,0.6) ──
+    _ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+    _ctx.lineWidth   = Math.max(0.8, Math.min(d.rx, d.ry) * 0.15);
     _ctx.beginPath();
-    _ctx.ellipse(d.x, cy, d.rx, d.ry, 0, 0, Math.PI * 2);
+    _ctx.ellipse(d.x, d.y, d.rx, d.ry, 0, 0, Math.PI * 2);
     _ctx.stroke();
 
     _ctx.restore();
