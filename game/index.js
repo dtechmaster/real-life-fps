@@ -248,7 +248,7 @@ async function loadGame() {
 
     // Weather is non-blocking — init the canvas loop immediately,
     // then fetch conditions in the background if geo was granted.
-    initWeatherFx(weatherCanvas);
+    initWeatherFx(weatherCanvas, webcamCanvas);
     if (_geoCoords) {
       // Fetch weather + city name in parallel; update HUD when both settle
       Promise.all([

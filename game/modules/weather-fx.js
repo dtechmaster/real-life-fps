@@ -1,12 +1,13 @@
 import { getWeather, getCity } from './weather.js';
 
 // #region Canvas state
-let _canvas  = null;
-let _ctx     = null;
-let _w       = 0;
-let _h       = 0;
-let _rafId   = null;
-let _inited  = false;
+let _canvas   = null;
+let _ctx      = null;
+let _bgCanvas = null; // webcam canvas — used for lens refraction inside drops
+let _w        = 0;
+let _h        = 0;
+let _rafId    = null;
+let _inited   = false;
 // #endregion
 
 // #region Frost state
@@ -18,7 +19,7 @@ let _lastH        = 0;
 // #endregion
 
 // #region Rain drop state
-const MAX_DROPS = 90;
+const MAX_DROPS = 65;
 let _drops = [];
 // #endregion
 
@@ -34,14 +35,15 @@ let _wipeY    = 0;
 // #endregion
 
 // #region Init / resize / stop
-export function initWeatherFx(canvas) {
+export function initWeatherFx(canvas, bgCanvas) {
   if (_inited) return;
   _inited = true;
 
-  _canvas = canvas;
-  _ctx    = canvas.getContext('2d');
-  _w      = canvas.width;
-  _h      = canvas.height;
+  _canvas   = canvas;
+  _bgCanvas = bgCanvas ?? null;
+  _ctx      = canvas.getContext('2d');
+  _w        = canvas.width;
+  _h        = canvas.height;
 
   _initWipeListeners();
   _rafId = requestAnimationFrame(_tick);
@@ -209,11 +211,12 @@ function _spawnDrop() {
   _drops.push({
     x      : Math.random() * _w,
     y      : Math.random() * _h * 0.55,
-    size   : 7 + Math.random() * 20,
-    speedY : 0.35 + Math.random() * 0.9,
+    size   : 8 + Math.random() * 22,
+    speedY : 0.3 + Math.random() * 0.8,
     drift  : (Math.random() - 0.5) * 0.3,
-    opacity: 0.55 + Math.random() * 0.4,
+    opacity: 0.75 + Math.random() * 0.25,
     life   : 1.0,
+    born   : performance.now(),
   });
 }
 
@@ -229,50 +232,90 @@ function _tickDrops() {
     const d = _drops[i];
     d.y    += d.speedY;
     d.x    += d.drift;
-    if (d.y > _h * 0.68) d.life -= 0.008;
+    if (d.y > _h * 0.68) d.life -= 0.007;
     if (d.life <= 0 || d.y > _h + 20) _drops.splice(i, 1);
   }
 }
 
 function _drawDrops() {
+  if (!_drops.length) return;
+  const now = performance.now();
+
   for (const d of _drops) {
+    const age   = now - d.born;
+    const popT  = Math.min(1, age / 220);       // 0→1 over 220 ms
+    const popSc = 1 + (1 - popT);               // 2→1  pop-in scale
+    const rx    = d.size * 0.58;
+    const ry    = d.size;
+    const alpha = d.opacity * d.life * popT;
+
+    if (alpha < 0.02) continue;
+
     _ctx.save();
 
-    // Sliding streak above the drop — thin trail showing where it came from
-    const trailLen = d.size * (2.5 + d.speedY * 3);
-    _ctx.globalAlpha = d.opacity * d.life * 0.35;
-    _ctx.strokeStyle = 'rgba(180, 225, 255, 0.9)';
-    _ctx.lineWidth   = Math.max(1, d.size * 0.22);
+    // Pop-in: scale from 2× down to 1× around drop centre
+    _ctx.translate(d.x, d.y);
+    _ctx.scale(popSc, popSc);
+    _ctx.translate(-d.x, -d.y);
+
+    // ── Trail streak above the drop ────────────────────────────────────
+    const trailLen = ry * (2 + d.speedY * 2.5);
+    _ctx.globalAlpha = alpha * 0.38;
+    _ctx.strokeStyle = 'rgba(200, 230, 255, 0.9)';
+    _ctx.lineWidth   = Math.max(1, rx * 0.28);
     _ctx.lineCap     = 'round';
     _ctx.beginPath();
-    _ctx.moveTo(d.x - d.drift * 8, d.y - trailLen);
-    _ctx.lineTo(d.x,                d.y - d.size * 0.4);
+    _ctx.moveTo(d.x - d.drift * 7, d.y - ry - trailLen);
+    _ctx.lineTo(d.x,                d.y - ry * 0.35);
     _ctx.stroke();
 
-    // Drop body — radial gradient for a glassy lens-drop look
-    _ctx.globalAlpha = d.opacity * d.life;
-    const grad = _ctx.createRadialGradient(
-      d.x - d.size * 0.25, d.y - d.size * 0.3, 0,
-      d.x,                  d.y,                d.size
-    );
-    grad.addColorStop(0,   'rgba(255, 255, 255, 0.95)');
-    grad.addColorStop(0.4, 'rgba(160, 215, 255, 0.45)');
-    grad.addColorStop(1,   'rgba(10,  60,  130, 0.18)');
-
-    _ctx.fillStyle = grad;
+    // ── Drop interior (clipped to ellipse) ─────────────────────────────
+    _ctx.save();
     _ctx.beginPath();
-    _ctx.ellipse(d.x, d.y, d.size * 0.58, d.size, 0, 0, Math.PI * 2);
-    _ctx.fill();
+    _ctx.ellipse(d.x, d.y, rx, ry, 0, 0, Math.PI * 2);
+    _ctx.clip();
 
-    // Inner specular highlight
-    _ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-    _ctx.lineWidth   = 1;
+    if (_bgCanvas) {
+      // Lens refraction: draw magnified + vertically flipped camera frame.
+      // A convex water drop acts like a converging lens — it inverts the image.
+      const mag = 1.9;
+      const sw  = (rx * 2) / mag;
+      const sh  = (ry * 2) / mag;
+      const sx  = d.x - sw / 2;
+      const sy  = d.y - sh / 2;
+
+      // Vertical flip transform around the drop's vertical centre
+      _ctx.globalAlpha = alpha;
+      _ctx.transform(1, 0, 0, -1, 0, d.y * 2);
+      _ctx.drawImage(_bgCanvas, sx, sy, sw, sh, d.x - rx, d.y - ry, rx * 2, ry * 2);
+      _ctx.transform(1, 0, 0, -1, 0, d.y * 2); // revert flip
+    }
+
+    // Glassy tint over the lens content
+    _ctx.globalAlpha = alpha * 0.18;
+    _ctx.fillStyle   = 'rgba(210, 238, 255, 1)';
+    _ctx.fillRect(d.x - rx, d.y - ry, rx * 2, ry * 2);
+
+    _ctx.restore(); // pop clip
+
+    // ── Dark outer ring (like the CodePen border element) ──────────────
+    _ctx.globalAlpha = alpha * 0.65;
+    _ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+    _ctx.lineWidth   = Math.max(1.5, d.size * 0.08);
     _ctx.beginPath();
-    _ctx.moveTo(d.x - d.size * 0.22, d.y - d.size * 0.5);
-    _ctx.lineTo(d.x - d.size * 0.32, d.y + d.size * 0.12);
+    _ctx.ellipse(d.x, d.y, rx, ry, 0, 0, Math.PI * 2);
     _ctx.stroke();
 
-    _ctx.restore();
+    // ── Inner specular highlight crescent ──────────────────────────────
+    _ctx.globalAlpha = alpha * 0.55;
+    _ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+    _ctx.lineWidth   = 1.2;
+    _ctx.beginPath();
+    _ctx.moveTo(d.x - rx * 0.36, d.y - ry * 0.5);
+    _ctx.quadraticCurveTo(d.x - rx * 0.54, d.y + ry * 0.02, d.x - rx * 0.28, d.y + ry * 0.22);
+    _ctx.stroke();
+
+    _ctx.restore(); // pop scale transform
   }
 }
 // #endregion
