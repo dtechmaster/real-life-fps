@@ -19,8 +19,9 @@ let _lastH        = 0;
 // #endregion
 
 // #region Rain drop state
-const MAX_DROPS = 65;
-let _drops = [];
+const MAX_DROPS  = 80;
+let   _drops     = [];
+let   _rainFilter = false; // tracks whether the CSS filter is currently applied
 // #endregion
 
 // #region Snow state
@@ -206,17 +207,37 @@ function _applyWipe() {
 }
 // #endregion
 
-// #region Rain drops (lens water drops)
+// #region Rain drops — static window-condensation style (inspired by Lucas Bebber)
+//
+// Behaviour mirrors the CodePen:
+//   • Drops are STATIC — they land on the glass and stay.
+//   • Each drop shows the scene behind it magnified ~10× and inverted 180°
+//     (a convex water drop acts as a converging lens — exactly like real glass).
+//   • Spring pop-in: scale 2.5 → 1 with a slight overshoot.
+//   • A dark box-shadow ring surrounds every drop (same as the CSS .border element).
+//   • In the last 25% of its life the drop slowly slides down before fading out.
+//   • The weather canvas itself gets blur(0.7px) brightness(1.2) while raining
+//     (same as the CodePen filter on the .raindrops layer).
+
+// Ease-out-back — approximates cubic-bezier(0.175, 0.885, 0.320, 1.275).
+// Overshoots 1 slightly then settles, giving the spring pop feel.
+function _easeOutBack(t) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
 function _spawnDrop() {
+  const size    = 5  + Math.random() * 13;          // 5–18 px (half-height radius)
+  const stretch = 0.06 + Math.random() * 0.22;      // 6–28 % vertical stretch
   _drops.push({
-    x      : Math.random() * _w,
-    y      : Math.random() * _h * 0.55,
-    size   : 8 + Math.random() * 22,
-    speedY : 0.3 + Math.random() * 0.8,
-    drift  : (Math.random() - 0.5) * 0.3,
-    opacity: 0.75 + Math.random() * 0.25,
-    life   : 1.0,
+    x      : 8 + Math.random() * (_w - 16),
+    y      : 8 + Math.random() * (_h * 0.85),
+    rx     : size * 0.52,                           // horizontal radius
+    ry     : size * 0.52 * (1 + stretch),           // vertical radius (taller)
     born   : performance.now(),
+    maxLife: 10000 + Math.random() * 14000,         // 10–24 s
+    mag    : 7 + Math.random() * 4,                 // 7–11× magnification
+    slideY : 0,                                     // accumulated slide px (late-life)
   });
 }
 
@@ -224,16 +245,30 @@ function _tickDrops() {
   const weather   = getWeather();
   const intensity = weather?.isStorm ? 3 : weather?.isRaining ? 1 : 0;
 
-  if (intensity > 0 && _drops.length < MAX_DROPS && Math.random() < 0.1 * intensity) {
+  // Toggle canvas-level blur/brightness filter
+  const wantFilter = intensity > 0;
+  if (wantFilter !== _rainFilter) {
+    _rainFilter          = wantFilter;
+    _canvas.style.filter = wantFilter ? 'blur(0.7px) brightness(1.2)' : '';
+  }
+
+  if (intensity > 0 && _drops.length < MAX_DROPS && Math.random() < 0.07 * intensity) {
     _spawnDrop();
   }
 
+  if (!_drops.length) return;
+  const now = performance.now();
   for (let i = _drops.length - 1; i >= 0; i--) {
-    const d = _drops[i];
-    d.y    += d.speedY;
-    d.x    += d.drift;
-    if (d.y > _h * 0.68) d.life -= 0.007;
-    if (d.life <= 0 || d.y > _h + 20) _drops.splice(i, 1);
+    const d  = _drops[i];
+    const t  = (now - d.born) / d.maxLife; // 0 → 1
+
+    // In the last 25% of life, the drop starts sliding down and accelerating
+    if (t > 0.75) {
+      const slideT = (t - 0.75) / 0.25;   // 0 → 1
+      d.slideY    += 0.12 + slideT * 0.55; // gentle → faster
+    }
+
+    if (t >= 1 || d.y + d.slideY > _h + 40) _drops.splice(i, 1);
   }
 }
 
@@ -242,80 +277,70 @@ function _drawDrops() {
   const now = performance.now();
 
   for (const d of _drops) {
-    const age   = now - d.born;
-    const popT  = Math.min(1, age / 220);       // 0→1 over 220 ms
-    const popSc = 1 + (1 - popT);               // 2→1  pop-in scale
-    const rx    = d.size * 0.58;
-    const ry    = d.size;
-    const alpha = d.opacity * d.life * popT;
+    const t  = (now - d.born) / d.maxLife;
+    const cy = d.y + d.slideY; // current centre y (moves during slide)
 
-    if (alpha < 0.02) continue;
+    // Opacity: fade in first 4 %, solid until 80 %, fade out last 20 %
+    const opacity = t < 0.04 ? t / 0.04
+                  : t > 0.80 ? (1 - t) / 0.20
+                  : 1;
+    if (opacity < 0.02) continue;
+
+    // Spring pop-in scale: 2.5 → 1 over 200 ms with easeOutBack overshoot
+    const popT  = Math.min(1, (now - d.born) / 200);
+    const popSc = popT < 1 ? 2.5 - 1.5 * _easeOutBack(popT) : 1;
 
     _ctx.save();
 
-    // Pop-in: scale from 2× down to 1× around drop centre
-    _ctx.translate(d.x, d.y);
-    _ctx.scale(popSc, popSc);
-    _ctx.translate(-d.x, -d.y);
-
-    // ── Trail streak above the drop ────────────────────────────────────
-    const trailLen = ry * (2 + d.speedY * 2.5);
-    _ctx.globalAlpha = alpha * 0.38;
-    _ctx.strokeStyle = 'rgba(200, 230, 255, 0.9)';
-    _ctx.lineWidth   = Math.max(1, rx * 0.28);
-    _ctx.lineCap     = 'round';
-    _ctx.beginPath();
-    _ctx.moveTo(d.x - d.drift * 7, d.y - ry - trailLen);
-    _ctx.lineTo(d.x,                d.y - ry * 0.35);
-    _ctx.stroke();
-
-    // ── Drop interior (clipped to ellipse) ─────────────────────────────
-    _ctx.save();
-    _ctx.beginPath();
-    _ctx.ellipse(d.x, d.y, rx, ry, 0, 0, Math.PI * 2);
-    _ctx.clip();
-
-    if (_bgCanvas) {
-      // Lens refraction: draw magnified + vertically flipped camera frame.
-      // A convex water drop acts like a converging lens — it inverts the image.
-      const mag = 1.9;
-      const sw  = (rx * 2) / mag;
-      const sh  = (ry * 2) / mag;
-      const sx  = d.x - sw / 2;
-      const sy  = d.y - sh / 2;
-
-      // Vertical flip transform around the drop's vertical centre
-      _ctx.globalAlpha = alpha;
-      _ctx.transform(1, 0, 0, -1, 0, d.y * 2);
-      _ctx.drawImage(_bgCanvas, sx, sy, sw, sh, d.x - rx, d.y - ry, rx * 2, ry * 2);
-      _ctx.transform(1, 0, 0, -1, 0, d.y * 2); // revert flip
+    // Apply pop-in scale around drop centre
+    if (popSc !== 1) {
+      _ctx.translate(d.x, cy);
+      _ctx.scale(popSc, popSc);
+      _ctx.translate(-d.x, -cy);
     }
 
-    // Glassy tint over the lens content
-    _ctx.globalAlpha = alpha * 0.18;
-    _ctx.fillStyle   = 'rgba(210, 238, 255, 1)';
-    _ctx.fillRect(d.x - rx, d.y - ry, rx * 2, ry * 2);
+    // ── Clipped interior ────────────────────────────────────────────────
+    _ctx.save();
+    _ctx.beginPath();
+    _ctx.ellipse(d.x, cy, d.rx, d.ry, 0, 0, Math.PI * 2);
+    _ctx.clip();
+    _ctx.globalAlpha = opacity;
+
+    if (_bgCanvas) {
+      // Sample a small region of the camera (1/mag of the drop area) and
+      // draw it magnified + rotated 180° (full lens inversion, both axes).
+      const sw = (d.rx * 2) / d.mag;
+      const sh = (d.ry * 2) / d.mag;
+
+      _ctx.save();
+      _ctx.translate(d.x, cy);
+      _ctx.scale(-1, -1);           // 180° rotation = scale(-1,-1) around centre
+      _ctx.translate(-d.x, -cy);
+      _ctx.drawImage(
+        _bgCanvas,
+        d.x - sw / 2, cy - sh / 2, sw, sh,   // source: small centred sample
+        d.x - d.rx,   cy - d.ry, d.rx * 2, d.ry * 2 // dest: full drop bounds
+      );
+      _ctx.restore();
+    }
+
+    // Subtle brightness wash (water catches more light)
+    _ctx.globalAlpha = opacity * 0.10;
+    _ctx.fillStyle   = '#ffffff';
+    _ctx.fillRect(d.x - d.rx, cy - d.ry, d.rx * 2, d.ry * 2);
 
     _ctx.restore(); // pop clip
 
-    // ── Dark outer ring (like the CodePen border element) ──────────────
-    _ctx.globalAlpha = alpha * 0.65;
-    _ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
-    _ctx.lineWidth   = Math.max(1.5, d.size * 0.08);
+    // ── Dark outer ring — equivalent to CSS box-shadow on .border ───────
+    const ringW = Math.max(1.2, Math.min(d.rx, d.ry) * 0.28);
+    _ctx.globalAlpha = opacity * 0.88;
+    _ctx.strokeStyle = 'rgba(0, 0, 0, 0.82)';
+    _ctx.lineWidth   = ringW;
     _ctx.beginPath();
-    _ctx.ellipse(d.x, d.y, rx, ry, 0, 0, Math.PI * 2);
+    _ctx.ellipse(d.x, cy, d.rx, d.ry, 0, 0, Math.PI * 2);
     _ctx.stroke();
 
-    // ── Inner specular highlight crescent ──────────────────────────────
-    _ctx.globalAlpha = alpha * 0.55;
-    _ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-    _ctx.lineWidth   = 1.2;
-    _ctx.beginPath();
-    _ctx.moveTo(d.x - rx * 0.36, d.y - ry * 0.5);
-    _ctx.quadraticCurveTo(d.x - rx * 0.54, d.y + ry * 0.02, d.x - rx * 0.28, d.y + ry * 0.22);
-    _ctx.stroke();
-
-    _ctx.restore(); // pop scale transform
+    _ctx.restore(); // pop pop-in scale / base state
   }
 }
 // #endregion
@@ -418,12 +443,16 @@ function _tick() {
   _ctx.clearRect(0, 0, _w, _h);
 
   const weather = getWeather();
+
+  // Always run _tickDrops so it can clear the rain filter when weather is gone
+  _tickDrops();
+
   if (weather) {
     // Frost MUST be drawn first — uses destination-in composite on a clear canvas
     if (weather.isFreezing || weather.isCold) _drawFrost();
 
     // These draw on top with default source-over
-    if (weather.isRaining || weather.isStorm) { _tickDrops(); _drawDrops(); }
+    if (weather.isRaining || weather.isStorm) _drawDrops();
     if (weather.isSnowing)                    { _tickSnow();  _drawSnow();  }
     if (weather.isHot)                          _drawHeatShimmer();
   }
