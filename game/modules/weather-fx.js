@@ -207,37 +207,40 @@ function _applyWipe() {
 }
 // #endregion
 
-// #region Rain drops — static window-condensation style (inspired by Lucas Bebber)
+// #region Rain drops — realistic window-condensation style
 //
-// Behaviour mirrors the CodePen:
-//   • Drops are STATIC — they land on the glass and stay.
-//   • Each drop shows the scene behind it magnified ~10× and inverted 180°
-//     (a convex water drop acts as a converging lens — exactly like real glass).
-//   • Spring pop-in: scale 2.5 → 1 with a slight overshoot.
-//   • A dark box-shadow ring surrounds every drop (same as the CSS .border element).
-//   • In the last 25% of its life the drop slowly slides down before fading out.
-//   • The weather canvas itself gets blur(0.7px) brightness(1.2) while raining
-//     (same as the CodePen filter on the .raindrops layer).
+// Why previous attempts looked "cartoon":
+//   High magnification (7-11×) on medium drops (rx 5-18px) means the source
+//   sample is < 2px of the camera canvas — essentially 1 colour — so every
+//   drop renders as a flat coloured blob.  The fix is low magnification (2-3×)
+//   so each drop shows a readable, inverted, slightly-zoomed region of the
+//   scene with visible colour variation.
+//
+// Visual recipe (mirrors the CodePen):
+//   • Static condensation drops — land and stay, slide in the last 25 % of life
+//   • Interior: 2-3× magnified + 180°-inverted camera sample (scale -1,-1)
+//   • Exterior: one dark ring, nothing else — no gradients, no highlights
+//   • Spring pop-in: scale 2.5 → 1, cubic-bezier(0.175, 0.885, 0.32, 1.275)
+//   • Canvas-level filter: blur(0.4px) brightness(1.1) while raining
 
-// Ease-out-back — approximates cubic-bezier(0.175, 0.885, 0.320, 1.275).
-// Overshoots 1 slightly then settles, giving the spring pop feel.
 function _easeOutBack(t) {
+  // Matches cubic-bezier(0.175, 0.885, 0.32, 1.275) — slight overshoot then settle
   const c1 = 1.70158, c3 = c1 + 1;
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 }
 
 function _spawnDrop() {
-  const size    = 5  + Math.random() * 13;          // 5–18 px (half-height radius)
-  const stretch = 0.06 + Math.random() * 0.22;      // 6–28 % vertical stretch
+  const rx = 8  + Math.random() * 12;          // 8–20 px radius (readable source sample)
+  const ry = rx * (1.07 + Math.random() * 0.18); // slight vertical elongation
   _drops.push({
-    x      : 8 + Math.random() * (_w - 16),
-    y      : 8 + Math.random() * (_h * 0.85),
-    rx     : size * 0.52,                           // horizontal radius
-    ry     : size * 0.52 * (1 + stretch),           // vertical radius (taller)
+    x      : rx + Math.random() * (_w - rx * 2),
+    y      : ry + Math.random() * (_h * 0.88 - ry),
+    rx,
+    ry,
     born   : performance.now(),
-    maxLife: 10000 + Math.random() * 14000,         // 10–24 s
-    mag    : 7 + Math.random() * 4,                 // 7–11× magnification
-    slideY : 0,                                     // accumulated slide px (late-life)
+    maxLife: 10000 + Math.random() * 12000,     // 10–22 s
+    mag    : 2.0 + Math.random() * 1.5,         // 2–3.5× — keeps source ≥ 9 px wide
+    slideY : 0,
   });
 }
 
@@ -245,30 +248,23 @@ function _tickDrops() {
   const weather   = getWeather();
   const intensity = weather?.isStorm ? 3 : weather?.isRaining ? 1 : 0;
 
-  // Toggle canvas-level blur/brightness filter
   const wantFilter = intensity > 0;
   if (wantFilter !== _rainFilter) {
     _rainFilter          = wantFilter;
-    _canvas.style.filter = wantFilter ? 'blur(0.7px) brightness(1.2)' : '';
+    _canvas.style.filter = wantFilter ? 'blur(0.4px) brightness(1.1)' : '';
   }
 
-  if (intensity > 0 && _drops.length < MAX_DROPS && Math.random() < 0.07 * intensity) {
+  if (intensity > 0 && _drops.length < MAX_DROPS && Math.random() < 0.08 * intensity) {
     _spawnDrop();
   }
 
   if (!_drops.length) return;
   const now = performance.now();
   for (let i = _drops.length - 1; i >= 0; i--) {
-    const d  = _drops[i];
-    const t  = (now - d.born) / d.maxLife; // 0 → 1
-
-    // In the last 25% of life, the drop starts sliding down and accelerating
-    if (t > 0.75) {
-      const slideT = (t - 0.75) / 0.25;   // 0 → 1
-      d.slideY    += 0.12 + slideT * 0.55; // gentle → faster
-    }
-
-    if (t >= 1 || d.y + d.slideY > _h + 40) _drops.splice(i, 1);
+    const d = _drops[i];
+    const t = (now - d.born) / d.maxLife;
+    if (t > 0.75) d.slideY += 0.1 + ((t - 0.75) / 0.25) * 0.55;
+    if (t >= 1 || d.y + d.slideY > _h + 30) _drops.splice(i, 1);
   }
 }
 
@@ -277,70 +273,55 @@ function _drawDrops() {
   const now = performance.now();
 
   for (const d of _drops) {
-    const t  = (now - d.born) / d.maxLife;
-    const cy = d.y + d.slideY; // current centre y (moves during slide)
+    const t       = (now - d.born) / d.maxLife;
+    const cy      = d.y + d.slideY;
+    const opacity = t < 0.05 ? t / 0.05 : t > 0.80 ? (1 - t) / 0.20 : 1;
+    if (opacity < 0.01) continue;
 
-    // Opacity: fade in first 4 %, solid until 80 %, fade out last 20 %
-    const opacity = t < 0.04 ? t / 0.04
-                  : t > 0.80 ? (1 - t) / 0.20
-                  : 1;
-    if (opacity < 0.02) continue;
-
-    // Spring pop-in scale: 2.5 → 1 over 200 ms with easeOutBack overshoot
-    const popT  = Math.min(1, (now - d.born) / 200);
+    // Spring pop-in: 2.5 → 1 over 180 ms
+    const popT  = Math.min(1, (now - d.born) / 180);
     const popSc = popT < 1 ? 2.5 - 1.5 * _easeOutBack(popT) : 1;
 
     _ctx.save();
-
-    // Apply pop-in scale around drop centre
+    _ctx.globalAlpha = opacity;
     if (popSc !== 1) {
       _ctx.translate(d.x, cy);
       _ctx.scale(popSc, popSc);
       _ctx.translate(-d.x, -cy);
     }
 
-    // ── Clipped interior ────────────────────────────────────────────────
+    // ── Interior: clip + 180°-inverted magnified camera ─────────────────
     _ctx.save();
     _ctx.beginPath();
     _ctx.ellipse(d.x, cy, d.rx, d.ry, 0, 0, Math.PI * 2);
     _ctx.clip();
-    _ctx.globalAlpha = opacity;
 
     if (_bgCanvas) {
-      // Sample a small region of the camera (1/mag of the drop area) and
-      // draw it magnified + rotated 180° (full lens inversion, both axes).
+      // Source sample: rx*2/mag wide — at mag=2.5 and rx=12 that's ~9.6 px,
+      // enough pixels to show colour variation (not a single-colour blob).
       const sw = (d.rx * 2) / d.mag;
       const sh = (d.ry * 2) / d.mag;
-
       _ctx.save();
       _ctx.translate(d.x, cy);
-      _ctx.scale(-1, -1);           // 180° rotation = scale(-1,-1) around centre
+      _ctx.scale(-1, -1);        // full 180° inversion — both axes
       _ctx.translate(-d.x, -cy);
-      _ctx.drawImage(
-        _bgCanvas,
-        d.x - sw / 2, cy - sh / 2, sw, sh,   // source: small centred sample
-        d.x - d.rx,   cy - d.ry, d.rx * 2, d.ry * 2 // dest: full drop bounds
+      _ctx.drawImage(_bgCanvas,
+        d.x - sw / 2, cy - sh / 2, sw, sh,
+        d.x - d.rx,   cy - d.ry,   d.rx * 2, d.ry * 2
       );
       _ctx.restore();
     }
 
-    // Subtle brightness wash (water catches more light)
-    _ctx.globalAlpha = opacity * 0.10;
-    _ctx.fillStyle   = '#ffffff';
-    _ctx.fillRect(d.x - d.rx, cy - d.ry, d.rx * 2, d.ry * 2);
+    _ctx.restore(); // pop clip — no brightness wash, no gradients, nothing else
 
-    _ctx.restore(); // pop clip
-
-    // ── Dark outer ring — equivalent to CSS box-shadow on .border ───────
-    const ringW = Math.max(1.2, Math.min(d.rx, d.ry) * 0.28);
-    _ctx.globalAlpha = opacity * 0.88;
-    _ctx.strokeStyle = 'rgba(0, 0, 0, 0.82)';
-    _ctx.lineWidth   = ringW;
+    // ── Dark ring only — equivalent to the CodePen .border box-shadow ───
+    _ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+    _ctx.lineWidth   = Math.max(1.2, Math.min(d.rx, d.ry) * 0.26);
     _ctx.beginPath();
     _ctx.ellipse(d.x, cy, d.rx, d.ry, 0, 0, Math.PI * 2);
     _ctx.stroke();
 
-    _ctx.restore(); // pop pop-in scale / base state
+    _ctx.restore();
   }
 }
 // #endregion
