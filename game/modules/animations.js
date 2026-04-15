@@ -26,6 +26,19 @@ let _lastShotTime   = 0;
 async function initAudio() {
   try {
     _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // iOS Safari starts AudioContext in 'suspended' state and only allows
+    // resume() from within a user-gesture call stack (touchstart / mousedown).
+    // A one-time capture-phase listener fires before any other handler and
+    // resumes the context at the first user interaction.
+    function unlockAudio() {
+      if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume();
+      document.removeEventListener('touchstart', unlockAudio, { capture: true });
+      document.removeEventListener('mousedown',  unlockAudio, { capture: true });
+    }
+    document.addEventListener('touchstart', unlockAudio, { capture: true, passive: true });
+    document.addEventListener('mousedown',  unlockAudio, { capture: true, passive: true });
+
     const [shot, burst] = await Promise.all([
       loadBuffer('../assets/gun-shot.mp3'),
       loadBuffer('../assets/clean-machine-gun-burst.mp3'),

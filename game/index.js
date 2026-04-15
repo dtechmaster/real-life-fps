@@ -74,7 +74,12 @@ function showGame() {
 function updateWeatherHud() {
   const hud  = document.getElementById('weather-hud');
   const data = getWeatherHudData();
-  if (!data) return;
+
+  if (!data) {
+    hud.innerHTML = `<div class="w-main"><span class="w-label">GPS UNAVAILABLE</span></div>`;
+    hud.classList.remove('hidden');
+    return;
+  }
 
   hud.innerHTML = [
     `<div class="w-main">`,
@@ -246,7 +251,12 @@ async function loadGame() {
     if (_geoCoords) {
       fetchWeather(_geoCoords.lat, _geoCoords.lon)
         .then(updateWeatherHud)
-        .catch(function() {}); // silently skip if API unavailable
+        .catch(function(err) {
+          console.warn('[Weather] fetch failed:', err);
+          updateWeatherHud(); // shows "GPS UNAVAILABLE" fallback
+        });
+    } else {
+      updateWeatherHud(); // shows "GPS UNAVAILABLE" immediately
     }
   } catch (err) {
     clearInterval(statusTimer);
