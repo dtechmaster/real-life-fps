@@ -65,15 +65,16 @@ export function tickShooter() {
   const now       = performance.now();
   const hasAmmo   = ammo > 0;
   const inputHeld = mouseDown || shiftSDown;
-  const firing    = isCrosshairOnPerson() && inputHeld && hasAmmo;
+  const firing    = inputHeld && hasAmmo;           // trigger pulled
+  const hitting   = firing && isCrosshairOnPerson(); // actually on target
 
   if (firing && !wasFiring) emit('onShootStart');
 
-  // Rate-limited shot: emit onShoot and consume ammo only when interval passes
+  // Rate-limited shot: consume ammo + fire effects every interval
   if (firing && (now - lastShotTime) >= SHOT_INTERVAL_MS) {
     ammo--;
     lastShotTime = now;
-    emit('onShoot');
+    emit('onShoot', hitting); // hitting flag tells listeners if this counts
   }
 
   if (!firing && wasFiring) emit('onShootEnd');
@@ -86,7 +87,7 @@ export function onShooterEvent(event, callback) {
   listeners[event]?.push(callback);
 }
 
-export function isFiring()   { return wasFiring; }
+export function isFiring()   { return wasFiring && isCrosshairOnPerson(); }
 export function getAmmo()    { return ammo; }
 export function getMaxAmmo() { return MAX_AMMO; }
 // #endregion
@@ -96,8 +97,8 @@ function reload() {
   ammo = MAX_AMMO;
 }
 
-function emit(event) {
-  for (const cb of listeners[event]) cb();
+function emit(event, arg) {
+  for (const cb of listeners[event]) cb(arg);
 }
 
 function matchesShoot(e, scheme) {
