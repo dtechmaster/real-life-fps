@@ -28,17 +28,16 @@ async function initAudio() {
   try {
     _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-    // iOS Safari starts AudioContext in 'suspended' state and only allows
-    // resume() from within a user-gesture call stack (touchstart / mousedown).
-    // A one-time capture-phase listener fires before any other handler and
-    // resumes the context at the first user interaction.
-    function unlockAudio() {
+    // iOS Safari requires AudioContext.resume() inside a user-gesture call stack.
+    // initAudio() is reached after an await in the start-button handler so the
+    // AudioContext is always created outside a gesture — the listener is the only
+    // unlock path.  It is intentionally kept alive (not removed) so iOS can
+    // re-resume the context after backgrounding the app.
+    function _iosUnlock() {
       if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume();
-      document.removeEventListener('touchstart', unlockAudio, { capture: true });
-      document.removeEventListener('mousedown',  unlockAudio, { capture: true });
     }
-    document.addEventListener('touchstart', unlockAudio, { capture: true, passive: true });
-    document.addEventListener('mousedown',  unlockAudio, { capture: true, passive: true });
+    document.addEventListener('touchstart', _iosUnlock, { capture: true, passive: true });
+    document.addEventListener('mousedown',  _iosUnlock, { capture: true, passive: true });
 
     const [shot, burst] = await Promise.all([
       loadBuffer('../assets/gun-shot.mp3'),
@@ -46,8 +45,8 @@ async function initAudio() {
     ]);
     _gunShotBuffer = shot;
     _burstBuffer   = burst;
-  } catch (_) {
-    // Audio unavailable — game still works without sound
+  } catch (err) {
+    console.warn('[Audio] init failed — game continues without sound:', err);
   }
 }
 
