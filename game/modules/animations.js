@@ -9,8 +9,9 @@ let flashAlpha  = 0;
 let _gameCanvas = null;
 let score       = 0;
 let _wasDead    = false;
-let _displayWidth  = 800;
-let _displayHeight = 600;
+let _displayWidth   = 800;
+let _displayHeight  = 600;
+let _personCentroid = null; // { x, y } in canvas px — updated every tick
 // #endregion
 
 // #region Audio (Web Audio API)
@@ -122,11 +123,11 @@ export function initAnimations(gameCanvas) {
     spawnSparks(pos.x, pos.y);
   });
 
-  onShooterEvent('onShoot', function() {
+  onShooterEvent('onShoot', function(hitting) {
     handleShotAudio();
     const pos = getCrosshairPos(_displayWidth, _displayHeight);
     spawnTracer(pos.x, pos.y);
-    spawnHole(pos.x, pos.y);
+    spawnHole(pos.x, pos.y, hitting);
   });
 
   onShooterEvent('onShootEnd', function() {
@@ -146,8 +147,9 @@ export function initAnimations(gameCanvas) {
  * @param {number}     displayHeight
  */
 export function tickAnimations(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeight) {
-  _displayWidth  = displayWidth;
-  _displayHeight = displayHeight;
+  _displayWidth   = displayWidth;
+  _displayHeight  = displayHeight;
+  _personCentroid = computePersonCentroid(mask, maskWidth, maskHeight, displayWidth, displayHeight);
   updateHealth();
   applyShake();
   drawDeathMask(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeight);
@@ -156,6 +158,29 @@ export function tickAnimations(mask, maskWidth, maskHeight, ctx, displayWidth, d
   drawLifeBar(mask, maskWidth, maskHeight, ctx, displayWidth, displayHeight);
   drawAmmoBar(ctx, displayWidth, displayHeight);
   drawScore(ctx);
+}
+// #endregion
+
+// #region Person centroid
+// Samples every 4th pixel for performance — accurate enough for offset tracking.
+function computePersonCentroid(mask, maskWidth, maskHeight, displayWidth, displayHeight) {
+  let sumX = 0, sumY = 0, count = 0;
+  const step = 4;
+  for (let y = 0; y < maskHeight; y += step) {
+    const row = y * maskWidth;
+    for (let x = 0; x < maskWidth; x += step) {
+      if (mask[row + x] === PERSON_CATEGORY) {
+        sumX += x;
+        sumY += y;
+        count++;
+      }
+    }
+  }
+  if (!count) return null;
+  return {
+    x: (sumX / count / maskWidth)  * displayWidth,
+    y: (sumY / count / maskHeight) * displayHeight,
+  };
 }
 // #endregion
 
@@ -367,12 +392,21 @@ function spawnSparks(cx, cy) {
   }
 }
 
-function spawnHole(cx, cy) {
+function spawnHole(cx, cy, isPersonHit) {
   const spread = 15;
   const hx = cx + (Math.random() - 0.5) * spread * 2;
   const hy = cy + (Math.random() - 0.5) * spread * 2;
   if (_holes.length >= MAX_HOLES) _holes.shift();
-  _holes.push({ x: hx, y: hy, life: 1.0 });
+
+  // Person-hit holes store an offset from the centroid so they move with the person.
+  // Non-person holes are anchored to the canvas (walls, floor, etc.).
+  const hole = { x: hx, y: hy, life: 1.0, onPerson: false, ox: 0, oy: 0 };
+  if (isPersonHit && _personCentroid) {
+    hole.onPerson = true;
+    hole.ox = hx - _personCentroid.x;
+    hole.oy = hy - _personCentroid.y;
+  }
+  _holes.push(hole);
 }
 
 function tickParticles(ctx) {
@@ -382,15 +416,20 @@ function tickParticles(ctx) {
   // #region Holes
   for (const h of _holes) {
     if (h.life <= 0) continue;
+
+    // Person holes track the centroid; fall back to absolute if person left frame
+    const rx = h.onPerson && _personCentroid ? _personCentroid.x + h.ox : h.x;
+    const ry = h.onPerson && _personCentroid ? _personCentroid.y + h.oy : h.y;
+
     ctx.globalAlpha = h.life * 0.85;
     ctx.fillStyle   = '#111111';
     ctx.beginPath();
-    ctx.arc(h.x, h.y, 4, 0, Math.PI * 2);
+    ctx.arc(rx, ry, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#CC0000';
     ctx.lineWidth   = 1.5;
     ctx.beginPath();
-    ctx.arc(h.x, h.y, 6, 0, Math.PI * 2);
+    ctx.arc(rx, ry, 6, 0, Math.PI * 2);
     ctx.stroke();
     h.life = Math.max(0, h.life - 0.006);
   }
